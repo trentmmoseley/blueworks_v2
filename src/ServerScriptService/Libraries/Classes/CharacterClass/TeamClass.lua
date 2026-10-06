@@ -21,6 +21,11 @@ function TeamClass.new(charclass : {}) : {}
     return Self
 end
 
+-- Gets player team
+function TeamClass:GetTeam() : string
+    return self.TeamName
+end
+
 -- Sets team
 function TeamClass:SetTeam(teamname : string) : ()
     self.TeamName = teamname

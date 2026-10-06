@@ -67,4 +67,11 @@ function TeamService:GetEnemies(player : Model | Player) : {Player}
     return Enemies
 end
 
+-- Gets player's team
+function TeamService:GetTeam(player : Model | Player) : string
+    local Player = player:IsA("Player") and player or (Players:GetPlayerFromCharacter(player) or player)
+    if not Player then return "Spectators" end
+    return Player:GetAttribute("Team")
+end
+
 return TeamService
