@@ -1,6 +1,7 @@
 -- Services
 local Players          = game:GetService("Players")
 local RepStorage       = game:GetService("ReplicatedStorage")
+local RunService       = game:GetService("RunService")
 
 -- Modules and objects
 local Knit             = require(RepStorage.Packages.Knit)
@@ -8,6 +9,8 @@ local Knit             = require(RepStorage.Packages.Knit)
 local CharacterClass   = {}
 CharacterClass.__index = CharacterClass
 
+local MovementClass    = require(script.MovementClass)
+local StamClass        = require(script.StaminaClass)
 local TeamClass        = require(script.TeamClass)
 
 -- [[ funcs ]] --
@@ -22,8 +25,11 @@ function CharacterClass.new(character : Model) : {}
 
     -- Sets up classes
     Self.Classes = {
+        MovementClass.new(Self),
+        StamClass.new(Self),
         TeamClass.new(Self),
     }
+    Self.StepConn = nil
 
     for _, class in Self.Classes do
         Self[class.ClassName] = class
@@ -46,6 +52,14 @@ function CharacterClass:Start() : ()
             part.CollisionGroup = "Characters"
         end
     end
+
+    -- Single per-step loop driving all sub-class step logic
+    self.StepConn = RunService.PreSimulation:Connect(function(dt)
+        if self.MovementClass and self.StaminaClass then
+            self.MovementClass:Step(dt)
+            self.StaminaClass:Step(dt)
+        end
+    end)
 
     print(`Started character class for character "{self.Character.Name}"`)
 end
