@@ -7,12 +7,13 @@ local MovementClass   = {}
 MovementClass.__index = MovementClass
 
 -- Modules and objects
--- local FallDamage 	  = require(RepStorage.Remotes.FallDamage):Server()
+local FallDamage 	  = require(RepStorage.Remotes.FallDamage):Server()
 local MMT_SETTINGS    = require(RepStorage.Modules.Data.MovementSettings)
 local PlaySound       = require(RepStorage.Modules.Util.PlaySound)
 
 -- Vars and consts
 local DEFAULT_JUMP      = 2
+local JUMP_STAMINA_COST = 10
 local FLAG_THRESHOLD    = 30
 local FDV_THRESHOLD     = 35 -- fall at 30+ studs per second to sustain fall damage
 local POS_INTERVAL      = 1/8 -- seconds between position checks for players
@@ -37,7 +38,7 @@ function MovementClass.new(charclass : {}) : {}
 
     Self.MmtChangedConn = nil
     Self.StateChangedConn = nil
-    Self.Rig = charclass.Character
+    Self.Character = charclass.Character
     Self.NoiseClass = charclass.NoiseClass
     Self.Player = Players:GetPlayerFromCharacter(charclass.Character)
 
@@ -63,7 +64,6 @@ function MovementClass:Start()
     -- Sets up character
     self.Character:SetAttribute("MovementType", "WALK")
     self.Character:SetAttribute("Speed", MMT_SETTINGS.WALK.Speed)
-    self.Hitbox = self.Character:WaitForChild("Hitbox")
 
     self.NextPosCheck = os.clock()
     self.PrevPos = self.Character.PrimaryPart.CFrame.Position
@@ -88,8 +88,12 @@ function MovementClass:Start()
         end
     end)
 
-    -- Landing + fall damage
+    -- Jump stamina + landing/fall damage
     self.StateChangedConn = self.Humanoid.StateChanged:Connect(function(old, new)
+        if self.Player and new == Enum.HumanoidStateType.Jumping then
+            self.CharacterClass.StaminaClass:SetStamina(-JUMP_STAMINA_COST, true)
+        end
+
         if old == Enum.HumanoidStateType.Freefall and new == Enum.HumanoidStateType.Landed then
             local YVel = -self.Character.PrimaryPart.AssemblyLinearVelocity.Y
             if YVel > FDV_THRESHOLD then
@@ -98,8 +102,7 @@ function MovementClass:Start()
                 PlaySound(FD_SOUNDS[math.random(1, #FD_SOUNDS)], "FD", self.Character.Torso, nil, 1, Rand:NextNumber(0.95, 1.05))
 
                 if self.Player then
-                    -- FallDamage:Fire(self.Player, math.abs(YVel))
-                    warn("register fall damage")
+                    FallDamage:Fire(self.Player, math.abs(YVel))
                 end
 
                 if YVel >= 60 then

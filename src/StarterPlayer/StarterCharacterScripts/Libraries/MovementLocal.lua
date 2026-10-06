@@ -203,7 +203,7 @@ function MovementLocal.Function()
             end
             
             -- Apply to Humanoid
-            local Speed = CurrentVelocity.Magnitude * (SlidingInfo and SlidingInfo.Speed or 1) * (Humanoid.FloorMaterial == Enum.Material.Air and 1.15 or 1)
+            local Speed = CurrentVelocity.Magnitude * (SlidingInfo and SlidingInfo.Speed or 1) * (Humanoid.FloorMaterial == Enum.Material.Air and 1.25 or 1)
             Character:SetAttribute("MoveDirection", Vector3.new(RawInput.X, 0, RawInput.Y))
             Humanoid.WalkSpeed = Speed
 

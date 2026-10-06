@@ -9,7 +9,12 @@ local Knit             = require(RepStorage.Packages.Knit)
 local CharacterClass   = {}
 CharacterClass.__index = CharacterClass
 
+local AmmoClass        = require(script.AmmoClass)
+local EffectClass      = require(script.EffectClass)
+local GunClass         = require(script.GunClass)
+local InvClass         = require(script.InventoryClass)
 local MovementClass    = require(script.MovementClass)
+local NoiseClass       = require(script.NoiseClass)
 local StamClass        = require(script.StaminaClass)
 local TeamClass        = require(script.TeamClass)
 
@@ -25,7 +30,12 @@ function CharacterClass.new(character : Model) : {}
 
     -- Sets up classes
     Self.Classes = {
+        AmmoClass.new(Self),
+        EffectClass.new(Self),
+        GunClass.new(Self),
+        InvClass.new(Self),
         MovementClass.new(Self),
+        NoiseClass.new(Self),
         StamClass.new(Self),
         TeamClass.new(Self),
     }

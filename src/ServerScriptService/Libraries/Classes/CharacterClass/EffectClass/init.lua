@@ -32,7 +32,7 @@ function EffectClass:Add(effect : string, duration : number?, strength : number?
 
         local Connection = nil
         Connection = RunService.PreSimulation:Connect(function(dt)
-            if not (self.CharacterClass and self.CharacterClass.Rig and self.CharacterClass.Rig:FindFirstAncestor("Workspace") and script:FindFirstChild(effect) and self.Effects[effect]) or os.clock() >= self.Effects[effect][1] then
+            if not (self.CharacterClass and self.CharacterClass.Character and self.CharacterClass.Character:FindFirstAncestor("Workspace") and script:FindFirstChild(effect) and self.Effects[effect]) or os.clock() >= self.Effects[effect][1] then
                 EffectClass.onEnd(self.CharacterClass)
                 
                 if self and self.Remove then

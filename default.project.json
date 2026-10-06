@@ -36,7 +36,8 @@
 
     "Workspace": {
       "$properties": {
-        "FilteringEnabled": true
+        "FilteringEnabled": true,
+        "PlayerScriptsUseInputActionSystem": "Disabled"
       }
     },
     "SoundService": {

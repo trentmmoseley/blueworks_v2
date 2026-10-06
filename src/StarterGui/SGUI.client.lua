@@ -2,6 +2,7 @@
 local GuiService  = game:GetService("GuiService")
 local Players  	  = game:GetService("Players")
 local RepStorage  = game:GetService("ReplicatedStorage")
+local RunService  = game:GetService("RunService")
 local SGUI        = game:GetService("StarterGui")
 local UIS		  = game:GetService("UserInputService")
 
@@ -22,6 +23,7 @@ local CharService = _G.Knit.GetService("CharService")
 -- Player
 local Player	  = Players.LocalPlayer
 local PlayerGui	  = Player.PlayerGui
+local Mouse    	  = Player:GetMouse()
 
 -- Modules and objects
 local Libraries	  = PlayerGui:WaitForChild("Libraries")
@@ -61,6 +63,11 @@ else
 		CharService.DeviceUpdate:Fire("Desktop")
 	end
 end
+
+-- [[ FPS + MOUSE ]] --
+RunService.RenderStepped:Connect(function(dt)
+	Mouse.Icon = "rbxassetid://68308747"
+end)
 
 -- [[ LOADS MODULES ]] --
 repeat task.wait() until Player:GetAttribute("Device")

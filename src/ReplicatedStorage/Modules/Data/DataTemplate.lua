@@ -21,6 +21,16 @@ local DataTemplate   = {
             Keyboard = "Q",
             Gamepad  = "DPadLeft"
         },
+
+        -- Guns
+        PointAim     = {
+            Keyboard = "P",
+            Gamepad  = "ButtonL1"
+        },
+        Reload       = {
+            Keyboard = "R",
+            Gamepad  = "ButtonX"
+        },
         
         -- Chat
         ToggleRadio  = {
@@ -29,6 +39,11 @@ local DataTemplate   = {
         ChatToggle   = {
             Keyboard = "Slash",
         },
+
+        -- Misc.
+        Drop         = {
+            Keyboard = "X",
+        }
     },
 
     Client           = {

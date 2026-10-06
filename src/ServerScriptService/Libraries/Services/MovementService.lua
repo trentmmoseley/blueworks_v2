@@ -47,6 +47,7 @@ function MovementService:KnitInit() : ()
     MovementRequest:On(function(player, mmt)
         if player.Team ~= game.Teams.Spectators then
             local Character = player.Character or player.CharacterAdded:Wait()
+            local Humanoid = Character:FindFirstChildOfClass("Humanoid")
             local CharClass = CharService:GetCharacterClass(Character)
 
             local StamClass = CharClass.StaminaClass
@@ -56,7 +57,6 @@ function MovementService:KnitInit() : ()
                     if StamClass:CanDoAction(mmt) then
                         if canGetUp(Character, Character:GetAttribute("MovementType"), mmt) then
                             Character:SetAttribute("MovementType", mmt)
-                            Character:SetAttribute("CheckpointID", 0)
                         else
                             CommsService:SendSubtitle(player, player, "Cannot get up here", "Red")
                         end
@@ -65,7 +65,7 @@ function MovementService:KnitInit() : ()
                     end
                 end
             else
-                if not StamClass:CanDoAction(mmt) then
+                if not StamClass:CanDoAction(mmt) and not table.find({Enum.HumanoidStateType.Jumping, Enum.HumanoidStateType.Freefall}, Humanoid:GetState()) then
                     CommsService:SendSubtitle(player, player, string.format("Too tired to %s", mmt), "Red")
                 end
             end

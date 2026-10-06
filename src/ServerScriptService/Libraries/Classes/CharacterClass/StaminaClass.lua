@@ -28,7 +28,7 @@ end
 
 -- Determines if character can run
 function StamClass:CanDoAction(action : string) : boolean
-    return self.Stamina >= MMT_SETTINGS[action].MinStamina
+    return self.Stamina >= (MMT_SETTINGS[action] or MMT_SETTINGS["RUN"]).MinStamina
 end
 
 -- Replicates stamina to clients in whole-unit steps (called after every change)

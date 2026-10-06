@@ -1,25 +1,37 @@
 -- Services
-local Players          = game:GetService("Players")
-local RepStorage       = game:GetService("ReplicatedStorage")
-local S2               = game:GetService("ServerStorage")
-local S3               = game:GetService("ServerScriptService")
+local Players           = game:GetService("Players")
+local RepStorage        = game:GetService("ReplicatedStorage")
+local S2                = game:GetService("ServerStorage")
+local S3                = game:GetService("ServerScriptService")
 
 -- Modules and objects
-local Knit            = require(RepStorage.Packages.Knit)
-local CharService     = Knit.CreateService({
+local Knit             = require(RepStorage.Packages.Knit)
+local CharService      = Knit.CreateService({
     Name = "CharService",
     Client = {
-        DeviceUpdate = Knit.CreateSignal(),
+        DeviceUpdate  = Knit.CreateSignal(),
     },
     Characters = {},
 })
 
-local CharacterClass  = require(S3.Libraries.Classes.CharacterClass)
+CharService.ClassAdded = _G.Signal.new()
+
+local CharacterClass   = require(S3.Libraries.Classes.CharacterClass)
 
 -- [[ funcs ]] --
 
+-- Gets all registered characters
+function CharService:GetAllCharClasses() : {{}}?
+    return self.Characters
+end
+
 -- Gets char class
 function CharService:GetCharacterClass(character : Model) : {}?
+    if not character or not character:IsA("Model") then
+        warn(`Invalid character: {character}`)
+        return
+    end
+
     if not self.Characters[character] then
         local WaitStart = os.clock()
         repeat task.wait() until self.Characters[character] or os.clock() >= WaitStart + 3
@@ -51,7 +63,7 @@ function CharService:ManageCharacter(character : Model) : ()
     CharClass:Start()
     self.Characters[character] = CharClass
 
-    character:SetAttribute("ID", math.random(0, 99999999))
+    character:SetAttribute("ID", math.random(0, 9999999))
     character:SetAttribute("isNPC", CharClass.isNPC)
 
     -- never break joints on death server-side: the client ragdolls an intact rig
