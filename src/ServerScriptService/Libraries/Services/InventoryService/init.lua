@@ -326,6 +326,7 @@ function InvService:KnitInit() : ()
         updateInv()
 
         self:AddItem(Character, S2.Tools.Ranged["Sniper Rifle"])
+        self:AddItem(Character, S2.Tools.Ranged["Desert Eagle"])
 
         -- Action request
         local ActionRequest = nil
