@@ -63,7 +63,7 @@ local BloodMod       = {
                             -- Determines position
                             local RayParams = RaycastParams.new()
                             RayParams.FilterType = Enum.RaycastFilterType.Exclude
-                            RayParams.FilterDescendantsInstances = {game.Workspace:WaitForChild("Characters"), game.Workspace.CurrentCamera}
+                            RayParams.FilterDescendantsInstances = {game.Workspace:WaitForChild("Characters"), game.Workspace.CurrentCamera, BloodFolder}
 
                             local Direction = Vector3.new(Rand:NextNumber(-1, 1) * 7, Rand:NextNumber(-1, 1) * 7, Rand:NextNumber(-1, 1) * 7)
                             local Raycast = game.Workspace:Raycast(CF.Position, Direction, RayParams)
