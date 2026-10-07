@@ -47,6 +47,7 @@ local DataTemplate   = {
     },
 
     Client           = {
+        doNoiseVal   = true,
         doPerfStats  = true,
     }
 }

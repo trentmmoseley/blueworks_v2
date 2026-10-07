@@ -97,7 +97,7 @@ local Anims		 	 = {
 		["MmtType"]  	 = "CROUCH",
 		["Looped"]	 	 = true,
 		["Speed"]	 	 = 1,
-		["Priority"] = Enum.AnimationPriority.Action4,
+		["Priority"] = Enum.AnimationPriority.Movement,
 		
 	},
 
@@ -109,7 +109,7 @@ local Anims		 	 = {
 		["MmtType"]  	 = "CRAWL",
 		["Looped"]	 	 = true,
 		["Speed"]	 	 = 1,
-		["Priority"] = Enum.AnimationPriority.Action4,
+		["Priority"] = Enum.AnimationPriority.Movement,
 		
 	},
 	
@@ -118,7 +118,7 @@ local Anims		 	 = {
 		["ID"]		 = 116496690680898,
 		["Looped"]	 = false,
 		["Speed"]	 = 2.5,
-		["Priority"] = Enum.AnimationPriority.Action4,
+		["Priority"] = Enum.AnimationPriority.Movement,
 
 	},
 	
@@ -150,7 +150,7 @@ local Anims		 	 = {
 		["MmtType"]  = "SLIDE",
 		["Looped"]	 = true,
 		["Speed"]	 = 1,
-		["Priority"] = Enum.AnimationPriority.Action4,
+		["Priority"] = Enum.AnimationPriority.Movement,
 
 	},
 	

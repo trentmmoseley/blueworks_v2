@@ -127,6 +127,14 @@ function CharService:KnitInit() : ()
     self.Client.DeviceUpdate:Connect(function(plr : Player, device : string)
         plr:SetAttribute("Device", device)
     end)
+
+    -- Arm-look update
+    RepStorage.Events.ArmLookUpdate.OnServerEvent:Connect(function(player, offset)
+        if player.Team ~= game.Teams.Spectators then
+            local Character = player.Character or player.CharacterAdded:Wait()
+            Character:SetAttribute("AimOffset", offset)
+        end
+    end)
 end
 
 return CharService

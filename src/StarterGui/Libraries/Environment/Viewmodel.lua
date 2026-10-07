@@ -234,7 +234,7 @@ local function fireGun(recoil)
 
             local NewRecoil = Vector3.new(_G.CurrentI2.CamRecoil, Rand:NextNumber(-1, 1) / 2, 3)
             if isAiming == true then
-                NewRecoil = NewRecoil:Lerp(Vector3.zero, 0.5)
+                NewRecoil = NewRecoil:Lerp(Vector3.zero, 0.5) * Lerp(1, 1 - _G.CurrentI2.RecoilAimDampen or 1, ThisAimAlpha)
             end
             recoil:shove(NewRecoil)
             GunshotDiff = _G.CurrentI2.Recoil / (isAiming == false and 1 or 3)

@@ -12,9 +12,12 @@ CharacterClass.__index = CharacterClass
 local AmmoClass        = require(script.AmmoClass)
 local EffectClass      = require(script.EffectClass)
 local GunClass         = require(script.GunClass)
+local HealthClass      = require(script.HealthClass)
+local HitboxClass      = require(script.HitboxClass)
 local InvClass         = require(script.InventoryClass)
 local MovementClass    = require(script.MovementClass)
 local NoiseClass       = require(script.NoiseClass)
+local ScoreClass       = require(script.ScoreClass)
 local StamClass        = require(script.StaminaClass)
 local TeamClass        = require(script.TeamClass)
 
@@ -33,9 +36,12 @@ function CharacterClass.new(character : Model) : {}
         AmmoClass.new(Self),
         EffectClass.new(Self),
         GunClass.new(Self),
+        HealthClass.new(Self),
+        HitboxClass.new(Self),
         InvClass.new(Self),
         MovementClass.new(Self),
         NoiseClass.new(Self),
+        ScoreClass.new(Self),
         StamClass.new(Self),
         TeamClass.new(Self),
     }
