@@ -17,6 +17,8 @@ local CommsService      = Knit.CreateService({
 
 local EffectMsgs        = require(RepStorage.Modules.Data.Dialog.EffectMessages)
 
+local GameValues        = RepStorage:WaitForChild("GameValues")
+
 -- Vars and consts
 local PlrCooldowns      = {}
 
@@ -58,7 +60,7 @@ end
 
 -- Sends message
 function CommsService:SendMessage(sender : Player, recipient : Player, message : string, color : string, distance : number, radio : boolean)
-    self.Client.MessageReceive:Fire(recipient, sender, message, TEAM_COLORS[color], distance, radio)
+    self.Client.MessageReceive:Fire(recipient, sender, message, GameValues.Bools.doFriendlyFire.Value and TEAM_COLORS.Spectators or TEAM_COLORS[color], distance, radio)
 end
 
 -- Sends subtitle

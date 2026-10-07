@@ -36,14 +36,14 @@ function TeamService:AreTeammates(entity1 : Model | Player, entity2 : Model | Pl
 end
 
 -- Gets player's teammates
-function TeamService:GetTeammates(player : Model | Player) : {Player}
+function TeamService:GetTeammates(player : Model | Player) : {Model | Player}
     local Player = player:IsA("Player") and player or (Players:GetPlayerFromCharacter(player) or player)
     local Teammates = {}
 
     if not Player then return Teammates end
 
     for _, char in game.Workspace:WaitForChild("Characters"):GetChildren() do
-        if self:AreTeammates(Player, char) then
+        if self:AreTeammates(Player, char) and not self.CharService:AreCharsSame(Player, char) then
             table.insert(Teammates, char)
         end
     end
@@ -52,14 +52,14 @@ function TeamService:GetTeammates(player : Model | Player) : {Player}
 end
 
 -- Gets player's enemies
-function TeamService:GetEnemies(player : Model | Player) : {Player}
+function TeamService:GetEnemies(player : Model | Player) : {Model | Player}
     local Player = player:IsA("Player") and player or (Players:GetPlayerFromCharacter(player) or player)
     local Enemies = {}
 
     if not Player then return Enemies end
 
     for _, char in game.Workspace:WaitForChild("Characters"):GetChildren() do
-        if not self:AreTeammates(Player, char) then
+        if not self:AreTeammates(Player, char) and not self.CharService:AreCharsSame(Player, char) then
             table.insert(Enemies, char)
         end
     end
@@ -72,6 +72,11 @@ function TeamService:GetTeam(player : Model | Player) : string
     local Player = player:IsA("Player") and player or (Players:GetPlayerFromCharacter(player) or player)
     if not Player then return "Spectators" end
     return Player:GetAttribute("Team")
+end
+
+-- On knit init
+function TeamService:KnitInit() : ()
+    self.CharService = _G.Knit.GetService("CharService")
 end
 
 return TeamService

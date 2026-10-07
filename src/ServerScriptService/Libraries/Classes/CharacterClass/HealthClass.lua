@@ -70,6 +70,7 @@ end
 
 -- Insta-kills player
 function HealthClass:InstaKill() : ()
+    self:Set(0)
     self.Humanoid.Health = 0
 end
 
@@ -123,7 +124,7 @@ function HealthClass:Start() : ()
     local ProxPrompt : ProximityPrompt = self.ProxPrompt
     
     local function isTeammate(plr)
-        return self.CharacterClass.TeamClass:IsTeammateOf(plr.Character or plr.CharacterAdded:Wait())
+        return _G.Knit.GetService("TeamService"):AreTeammates(plr.Character or plr.CharacterAdded:Wait(), self.Rig)
     end
 
     ProxPrompt.PromptButtonHoldBegan:Connect(function(plrwhotriggered)

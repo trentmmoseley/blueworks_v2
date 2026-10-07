@@ -37,6 +37,8 @@ function TeamClass:Start()
     -- Sets team automatically if player
     if self.CharacterClass.Player then
         self:SetTeam(self.CharacterClass.Player.Team.Name)
+    else
+        self:SetTeam("Subjects")
     end
 
     -- Starts all sub-classes

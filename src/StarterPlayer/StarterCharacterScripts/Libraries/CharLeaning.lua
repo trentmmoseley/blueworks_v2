@@ -124,8 +124,18 @@ function LeaningAndFootsteps.Function()
                 local LeftShoulder = Character.Torso["Left Shoulder"]
                 local Neck = Character.Torso["Neck"]
 
-                RightShoulder.C0 = RightShoulder.C0:Lerp(CFrame.new(1, 0.5, 0, 0, 0, 1, 0, 1, 0, -1, -0, -0) * CFrame.fromEulerAnglesXYZ(0, 0, -UsedOffset), QuarterLerp * 0.4)
-                LeftShoulder.C0 = LeftShoulder.C0:Lerp(CFrame.new(-1, 0.5, 0, -0, -0, -1, 0, 1, 0, 1, 0, 0) * CFrame.fromEulerAnglesXYZ(0, 0, UsedOffset), QuarterLerp * 0.4)
+                local RightShoulderBase = CFrame.new(1, 0.5, 0, 0, 0, 1, 0, 1, 0, -1, -0, -0)
+                local LeftShoulderBase = CFrame.new(-1, 0.5, 0, -0, -0, -1, 0, 1, 0, 1, 0, 0)
+
+                if Character:FindFirstChildOfClass("Tool") and MovementType == "CRAWL" then
+                    -- Arms extend forward toward the player's perspective while crawling with a tool
+                    RightShoulder.C0 = RightShoulder.C0:Lerp(RightShoulderBase * CFrame.Angles(0, 0, math.pi / 2 - UsedOffset), QuarterLerp * 0.4)
+                    LeftShoulder.C0 = LeftShoulder.C0:Lerp(LeftShoulderBase * CFrame.Angles(0, 0, UsedOffset - math.pi / 2), QuarterLerp * 0.4)
+                else
+                    RightShoulder.C0 = RightShoulder.C0:Lerp(RightShoulderBase * CFrame.fromEulerAnglesXYZ(0, 0, -UsedOffset), QuarterLerp * 0.4)
+                    LeftShoulder.C0 = LeftShoulder.C0:Lerp(LeftShoulderBase * CFrame.fromEulerAnglesXYZ(0, 0, UsedOffset), QuarterLerp * 0.4)
+                end
+
                 Neck.C0 = Neck.C0:Lerp(CFrame.new(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 1, -0) * CFrame.fromEulerAnglesXYZ(UsedOffset, (Character:GetAttribute("isAiming") == true and math.pi / -6 or 0), 0), QuarterLerp / 5)
             end
 		end

@@ -25,6 +25,16 @@ function CharService:GetAllCharClasses() : {{}}?
     return self.Characters
 end
 
+-- Determines if two characters are the same
+function CharService:AreCharsSame(char1 : Model | Player, char2 : Model | Player) : boolean
+    local Player1 = char1:IsA("Player") and char1 or (Players:GetPlayerFromCharacter(char1) or char1)
+    local Player2 = char2:IsA("Player") and char2 or (Players:GetPlayerFromCharacter(char2) or char2)
+
+    if not Player1 or not Player2 then return false end
+
+    return Player1 == Player2
+end
+
 -- Gets char class
 function CharService:GetCharacterClass(character : Model) : {}?
     if not character or not character:IsA("Model") then
@@ -62,6 +72,7 @@ function CharService:ManageCharacter(character : Model) : ()
     local CharClass = CharacterClass.new(character)
     CharClass:Start()
     self.Characters[character] = CharClass
+    self.ClassAdded:Fire(CharClass)
 
     character:SetAttribute("ID", math.random(0, 9999999))
     character:SetAttribute("isNPC", CharClass.isNPC)

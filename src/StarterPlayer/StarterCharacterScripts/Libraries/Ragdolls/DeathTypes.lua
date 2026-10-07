@@ -1,0 +1,3 @@
+local DeathTypes = {}
+
+return DeathTypes

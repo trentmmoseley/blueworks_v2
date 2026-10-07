@@ -9,7 +9,7 @@ local Character   = Player.Character or Player.CharacterAdded:Wait()
 
 -- Main function
 function Perspective.Function(dt)
-    Player.CameraMode = Enum.CameraMode[Player.Team == game.Teams.Squadmates and "LockFirstPerson" or "Classic"]
+    Player.CameraMode = Enum.CameraMode[(Player.Team == game.Teams.Squadmates and not Character:GetAttribute("isDowned")) and "LockFirstPerson" or "Classic"]
 end
 
 return Perspective

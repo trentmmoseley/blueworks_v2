@@ -49,8 +49,8 @@ function HealthService:ManageClass(class : {}) : ()
             end
 
             -- Code for PLAYERS + allies
-            local Teammates = class.TeamClass:GetTeammates()
-            if true and Rig:GetAttribute("beingBrainwashed") ~= true then
+            local Teammates = self.TeamService:GetTeammates(Rig)
+            if #Teammates > 0 and Rig:GetAttribute("beingBrainwashed") ~= true then
                 class.HealthClass:DownPlayer()
             else
                 if Rig:GetAttribute("beingBrainwashed") then
@@ -93,6 +93,7 @@ end
 -- On knit init completion
 function HealthService:KnitInit() : ()
     self.CharService = _G.Knit.GetService("CharService")
+    self.TeamService = _G.Knit.GetService("TeamService")
 
     -- Manages chars
     for _, class in self.CharService:GetAllCharClasses() do

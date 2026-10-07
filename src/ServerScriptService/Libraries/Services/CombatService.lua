@@ -36,7 +36,7 @@ function CombatService:Damage(attacker : Model?, target : Model, damage : number
     local AttackerID = attackerPresent and attacker:GetAttribute("ID") or nil
     local TargetID = target:GetAttribute("ID")
 
-    local doesDamage = (not attackerPresent or (not AttackerClass.TeamClass:IsTeammateOf(target) and AttackerClass.HealthClass.canAttack)) and TargetClass.HealthClass.canBeAttacked
+    local doesDamage = (not attackerPresent or (not self.TeamService:AreTeammates(attacker, target) and AttackerClass.HealthClass.canAttack)) and TargetClass.HealthClass.canBeAttacked
     if doesDamage then
         -- Records attackers
         if attackerPresent then

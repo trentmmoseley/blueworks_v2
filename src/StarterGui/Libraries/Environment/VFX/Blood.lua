@@ -71,7 +71,7 @@ local BloodMod       = {
                             if Raycast and Raycast.Instance then
                                 local ChosenParticle = BloodVFX:FindFirstChild(BloodType) or BloodVFX.Blood
                                 local NewParticle = ChosenParticle:Clone()
-                                local OrigSize = NewParticle.Size * Rand:NextNumber(0.5, Lerp(0.25, 2, Progress(Damage, 5, 50)))
+                                local OrigSize = NewParticle.Size * Rand:NextNumber(0.5, Lerp(0.25, 1, Progress(Damage, 5, 50)))
                                 NewParticle.Size = Vector3.one / 100
 
                                 NewParticle.Parent = BloodFolder

@@ -37,6 +37,7 @@ function GunService:KnitInit() : ()
     self.CharService = _G.Knit.GetService("CharService")
     self.CombatService = _G.Knit.GetService("CombatService")
     self.CommsService = _G.Knit.GetService("CommsService")
+    self.TeamService = _G.Knit.GetService("TeamService")
 
     -- Aiming
     self.Client.AimToggle:Connect(function(plr : Player, toggle : boolean)
@@ -195,8 +196,7 @@ function GunService:KnitInit() : ()
 
         -- Target exists and is valid, detect if on same team
         if info.HitCharacter and info.HitCharacter.Parent == game.Workspace.Characters then
-            local TargetClass = self.CharService:GetCharacterClass(info.HitCharacter)
-            if not TargetClass.TeamClass:IsTeammateOf(Character) then
+            if not self.TeamService:AreTeammates(Character, info.HitCharacter) then
                 self.CombatService:Damage(Character, info.HitCharacter, Info.Damage, string.upper(Info.Gun), "DEFAULT", true, info.HitInstance)
             end
         else

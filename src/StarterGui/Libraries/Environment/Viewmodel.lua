@@ -313,6 +313,7 @@ local function onPunchHit(rayres : RaycastResult?)
 end
 
 local function punch()
+    if Character:GetAttribute("isDowned") == true then return end
     local ChosenAnim = PunchTracks[math.random(1, #PunchTracks)]
     ChosenAnim:Play()
     PlaySound(121616358851209, "Swing", Camera, nil, 1, Rand:NextNumber(0.95, 1.05))
@@ -347,6 +348,21 @@ local function punch()
             PunchHitboxes[side] = nil
             Hitbox:Destroy()
         end)
+    end
+end
+
+-- Stops any in-progress punch animations (viewmodel + character) with no fade
+local function stopPunchAnims()
+    for _, Track in PunchTracks do
+        Track:Stop(0)
+    end
+
+    for _, Track in Humanoid.Animator:GetPlayingAnimationTracks() do
+        local AnimId = Track.Animation and Track.Animation.AnimationId or ""
+        local NumId = tonumber(string.match(AnimId, "%d+"))
+        if NumId and table.find(PUNCH_ANIMS_CHAR, NumId) then
+            Track:Stop(0)
+        end
     end
 end
 
@@ -402,7 +418,10 @@ local function update(dt : number, sway, bobble, recoil) : ()
     if MovementType == "CRAWL" then
         local CamCF = Camera.CFrame
         local _, yaw, _ = CamCF:ToEulerAnglesYXZ()
-        TheVM:PivotTo(CFrame.new(CamCF.Position) * CFrame.fromEulerAnglesYXZ(0, yaw, 0))
+        local FlatCF = CFrame.new(CamCF.Position) * CFrame.fromEulerAnglesYXZ(0, yaw, 0)
+        -- Blend back to the normal camera-following pivot as the player aims,
+        -- so aiming down sights while crawling locks on instead of clipping into the camera
+        TheVM:PivotTo(FlatCF:Lerp(TheVM:GetPivot(), ThisAimAlpha))
     end
 
      -- Bobble
@@ -651,6 +670,7 @@ function Viewmodel.Function()
         if EquipAnim then EquipAnim:Stop() EquipAnim = nil end
         gunDetected = false
         TrackingTool = nil
+        stopPunchAnims()
 
         local ToolModel = ItemDisplays:FindFirstChild(toolclass.Name)
         if not ToolModel then return end
