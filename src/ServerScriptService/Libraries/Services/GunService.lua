@@ -117,6 +117,16 @@ function GunService:KnitInit() : ()
             if DesiredAmmo > 0 and Gun:GetAttribute("Ammo") < ItemInfo.Mag then
                 Character:SetAttribute("isReloading", true)
 
+                -- Plays the reload sound server-side so every other client hears it
+                -- positionally; the shooter's own client strips the tool's children
+                -- (see Viewmodel) and plays the sound on the viewmodel instead
+                local Handle = Gun:FindFirstChild("Handle")
+                local ReloadSound = Handle and Handle:FindFirstChild("Reload")
+                if ReloadSound and ReloadSound:IsA("Sound") then
+                    ReloadSound:Stop()
+                    ReloadSound:Play()
+                end
+
                 if ItemInfo.repeatReloadTillFull == true then
                     -- Loads one round per ReloadLength until the mag is full or ammo runs out
                     local Completed = true
@@ -130,6 +140,11 @@ function GunService:KnitInit() : ()
                         -- attribute change; later rounds replay them through PlayGunAnim
                         if Rounds > 1 then
                             self.Client.PlayGunAnim:Fire(player, "Reload")
+
+                            if ReloadSound and ReloadSound:IsA("Sound") then
+                                ReloadSound:Stop()
+                                ReloadSound:Play()
+                            end
                         end
 
                         -- Failing the sanity check (e.g. the player fired to interrupt
@@ -150,6 +165,11 @@ function GunService:KnitInit() : ()
 
                     Character:SetAttribute("isReloading", false)
 
+                    -- Mirrors the shooter stopping the sound on their viewmodel
+                    if ReloadSound and ReloadSound:IsA("Sound") then
+                        ReloadSound:Stop()
+                    end
+
                     if Completed then
                         self.GunAnim:Fire(Character, "GunEquip")
                         self.Client.PlayGunAnim:Fire(player, "GunEquip")
@@ -162,6 +182,11 @@ function GunService:KnitInit() : ()
                     end)
 
                     Character:SetAttribute("isReloading", false)
+
+                    -- Mirrors the shooter stopping the sound on their viewmodel
+                    if ReloadSound and ReloadSound:IsA("Sound") then
+                        ReloadSound:Stop()
+                    end
 
                     if reloadSuccess == true then
                         local IdealAmmo = ItemInfo.Mag - Gun:GetAttribute("Ammo")
@@ -202,7 +227,7 @@ function GunService:KnitInit() : ()
         else
             if not info.HitInstance:FindFirstAncestor("Glass") then
                 if info.HitInstance.Transparency < 1 then
-                    _G.Knit.GetService("VFXService"):GlobalVFX("BulletHole", "BulletHole", info.Position, info.Position, info.Normal)
+                    _G.Knit.GetService("VFXService"):GlobalVFX("BulletHole", "BulletHole", info.Position, info.Position, info.Normal, info.HitInstance)
                 end
             end
         end

@@ -15,6 +15,7 @@ local Character           = Player.Character or Player.CharacterAdded:Wait()
 
 -- Modules and objects
 local BulletTemps         = RepStorage.VFX.Bullets
+local ItemDisplays        = RepStorage:WaitForChild("ItemDisplays")
 local Camera              = game.Workspace.CurrentCamera
 
 local BulletInfo          = require(RepStorage.Modules.Data.BulletInfo)
@@ -60,8 +61,28 @@ local function createBullet(shooter : Model, origin : Vector3, ammotype : string
     -- Extra pellets from one trigger pull (ShotsPerFire) skip the sound, flash and
     -- casing so a multi-shot gun only produces them once per shot
     if not skipEffects then
-        local FireSound = tool.Handle:FindFirstChild(string.format("Fire%s", Suppressor ~= nil and "Quiet" or ""))
-        PlaySound(FireSound.SoundId, "Fire", Camera, nil, 1, Rand:NextNumber(0.95, 1.05))
+        -- The equipped tool's Handle can't be relied on for sounds (each client
+        -- strips its own tool's children, and sounds may be absent server-side),
+        -- so the fire sound is sourced from the replicated ItemDisplays copy
+        local Display = ItemDisplays:FindFirstChild(gunname)
+        local Handle = Display and Display:FindFirstChild("Handle")
+        local FireSound = Handle and Handle:FindFirstChild(string.format("Fire%s", Suppressor ~= nil and "Quiet" or ""))
+
+        if FireSound then
+            if shooter == Character then
+                PlaySound(FireSound.SoundId, "Fire", Camera, nil, 1, Rand:NextNumber(0.95, 1.05))
+            else
+                -- Other players' shots play from the gun itself for positional audio
+                local ShotSound = FireSound:Clone()
+                ShotSound.PlaybackSpeed = Rand:NextNumber(0.95, 1.05)
+                ShotSound.Parent = Barrel or shooter.PrimaryPart
+                ShotSound:Play()
+
+                ShotSound.Ended:Connect(function()
+                    ShotSound:Destroy()
+                end)
+            end
+        end
 
         -- Effects
         task.spawn(function()

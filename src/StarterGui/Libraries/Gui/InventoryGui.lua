@@ -101,10 +101,10 @@ local function paintUI() : ()
             FoundFrame.Parent = Frame
         end
 
-        FoundFrame.BackgroundColor3 = TierInfo.Color
-        FoundFrame.UIStroke.Color = TierInfo.Color
-        FoundFrame.ViewportFrame.ImageColor3 = TierInfo.Color
-        FoundFrame.ViewportFrame.BackgroundColor3 = TierInfo.Color
+        FoundFrame.BackgroundColor3 = TierInfo.Color:Lerp(Color3.fromRGB(255, 255, 255), 1/3)
+        FoundFrame.UIStroke.Color = TierInfo.Color:Lerp(Color3.fromRGB(255, 255, 255), 1/3)
+        FoundFrame.ViewportFrame.ImageColor3 = TierInfo.Color:Lerp(Color3.fromRGB(255, 255, 255), 1/3)
+        FoundFrame.ViewportFrame.BackgroundColor3 = TierInfo.Color:Lerp(Color3.fromRGB(255, 255, 255), 1/3)
 
         -- Rotating model
         local TheDisplay = FoundFrame.ViewportFrame.WorldModel:FindFirstChildOfClass("Model")
@@ -138,7 +138,7 @@ local function paintUI() : ()
                 ItemDesc.Text = ItemInfo.Description
 
                 Tier.Text = string.format("TIER %s", TierInfo.Name)
-                Tier.TextColor3 = TierInfo.Color
+                Tier.TextColor3 = TierInfo.Color:Lerp(Color3.fromRGB(255, 255, 255), 1/3)
 
                 ItemName.TextTransparency = 0
                 ItemDesc.TextTransparency = 0

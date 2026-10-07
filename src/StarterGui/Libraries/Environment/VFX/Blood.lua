@@ -77,6 +77,15 @@ local BloodMod       = {
                                 NewParticle.Parent = BloodFolder
                                 NewParticle.CFrame = CFrame.new(Raycast.Position, Raycast.Position - Raycast.Normal) * CFrame.Angles(math.rad(90), 0, math.rad(90))
 
+                                -- Weld to the landing part so the splat moves with it
+                                if Raycast.Instance:IsA("BasePart") then
+                                    NewParticle.Anchored = false
+                                    local Weld = Instance.new("WeldConstraint")
+                                    Weld.Part0 = NewParticle
+                                    Weld.Part1 = Raycast.Instance
+                                    Weld.Parent = NewParticle
+                                end
+
                                 TweenService:Create(NewParticle, TweenInfo.new(1/2), {Size = OrigSize}):Play()
                                 PlaySound(BLOOD_SOUNDS[math.random(1, #BLOOD_SOUNDS)], "Ouch", NewParticle, nil, 1, Rand:NextNumber(0.9, 1.1))
 

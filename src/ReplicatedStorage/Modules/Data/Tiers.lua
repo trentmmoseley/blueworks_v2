@@ -12,7 +12,7 @@ local Tiers = {
         },
         {
             Name = "II",
-            Color = Color3.fromRGB(80, 80, 255),
+            Color = Color3.fromRGB(0, 0, 255),
         },
         {
             Name = "III",

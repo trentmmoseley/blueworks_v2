@@ -17,6 +17,7 @@ local BulletHole          = {
         ["Function"]        = function(args)
             local Position = args[1]
             local Normal = args[2]
+            local HitInstance = args[3]
 
             local Ricochet = RepStorage.VFX.GunEnv.Ricochet:Clone()
             Ricochet.Parent = game.Workspace
@@ -49,6 +50,15 @@ local BulletHole          = {
             local BulletHole = BulletHoleTemp:Clone()
             BulletHole.Parent = Folder
             BulletHole.CFrame = CFrame.new(Position, Position - Normal) * CFrame.Angles(math.rad(90), math.rad(math.random(0, 360)), 0)
+
+            -- Weld to the landing part so the hole moves with it
+            if HitInstance and HitInstance:IsA("BasePart") then
+                BulletHole.Anchored = false
+                local Weld = Instance.new("WeldConstraint")
+                Weld.Part0 = BulletHole
+                Weld.Part1 = HitInstance
+                Weld.Parent = BulletHole
+            end
 
             BulletHole.Debris:Emit()
 
