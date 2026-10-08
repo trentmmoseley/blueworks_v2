@@ -34,4 +34,6 @@ game.Workspace.DescendantAdded:Connect(function(prompt)
 end)
 
 -- [[ Server logic ]] --
-local Tethered = _G.Knit.GetService("NPCService"):CreateNPC("Human", CFrame.new(0, 10, 0))
+for i = 1, 8 do
+	local Tethered = _G.Knit.GetService("NPCService"):CreateNPC("Human", CFrame.new(0, 10, i * 10))
+end

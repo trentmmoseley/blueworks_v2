@@ -36,7 +36,7 @@ function AmmoClass:Start()
 	end
 
     for bullet, _ in BulletInfo do
-        self.Rig:SetAttribute("Ammo_"..bullet, 0)
+        self.Rig:SetAttribute("Ammo_"..bullet, 10000)
     end
 end
 
