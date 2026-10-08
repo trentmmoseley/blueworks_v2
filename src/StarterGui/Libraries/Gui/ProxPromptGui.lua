@@ -70,7 +70,7 @@ local function toggleVis()
         end
     end
 
-    if promptVis and CurrentPrompt.Parent and Highlight.Parent then
+    if promptVis and CurrentPrompt and CurrentPrompt.Parent and Highlight and Highlight.Parent then
         Highlight.Parent = CurrentPrompt.Parent
     end
 
@@ -94,12 +94,10 @@ end
 -- Main function
 function ProxPromptGui.Function()
     local function updateEnabled()
-        TheGui.Enabled = Player.Team ~= game.Teams.Squadmates
+        TheGui.Enabled = Player.Team ~= game.Teams.Spectators
     end
 
     updateEnabled()
-    Character:GetAttributeChangedSignal("CheckpointID"):Connect(updateEnabled)
-    Player:GetAttributeChangedSignal("powerOut"):Connect(updateEnabled)
 
     -- Clears old prox. beam
     ProxBeam = game.Workspace:FindFirstChild(PBTemp.Name) or RepStorage:FindFirstChild(PBTemp.Name)
@@ -228,7 +226,7 @@ function ProxPromptGui.Function()
 
     -- Unloads everything if player dies
     Player.Changed:Connect(function()
-        if Player.Team == game.Teams.Squadmates then
+        if Player.Team == game.Teams.Spectators then
             RunConn:Disconnect()
             if ProxBeam then
                 ProxBeam:Destroy()
