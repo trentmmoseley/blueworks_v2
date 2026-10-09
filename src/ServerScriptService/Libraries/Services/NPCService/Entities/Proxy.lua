@@ -1,5 +1,6 @@
 -- Services
 local Players         = game:GetService("Players")
+local Rand            = Random.new()
 local RepStorage      = game:GetService("ReplicatedStorage")
 local RunService      = game:GetService("RunService")
 
@@ -8,6 +9,7 @@ local DetectService   = _G.Knit.GetService("DetectionService")
 local VFXService      = _G.Knit.GetService("VFXService")
 
 -- Modules and objects
+local PlaySound       = require(RepStorage.Modules.Util.PlaySound)
 local SimplePath      = require(RepStorage.Modules.Util.SimplePath)
 
 -- Vars and consts
@@ -18,7 +20,13 @@ local ANIMS         = {
     ["Run"]         = {81207900885640, Enum.AnimationPriority.Action},
     ["Walk"]        = {89468869841055, Enum.AnimationPriority.Movement},
     ["Hold"]        = {96432749173875, Enum.AnimationPriority.Action3},
+    ["Jump"]        = {116496690680898, Enum.AnimationPriority.Action2},
+    ["Fall"]        = {119528283195927, Enum.AnimationPriority.Action},
+    ["Land"]        = {70926104383734, Enum.AnimationPriority.Action2},
 }
+
+local ATTACK_ANIMS  = {97633645023236, 126985686457998, 123162586564812, 94060623091801}
+local ATTACK_SOUNDS = {7801336419, 7801329626}
 
 local SPEEDS        = {
     PATROL          = 8,
@@ -33,6 +41,8 @@ local SIGHT_RANGE    = 1000 -- max distance in studs the Brainwashed can see
 local SIGHT_FOV      = 0.5  -- minimum facing alignment (LookVector dot direction) needed to see a target
 
 local UPDATE_INTERVAL = 1/4 -- seconds between awareness checks and path re-runs
+
+local ATTACK_INTERVAL = 1/2
 
 -- [[ funcs ]] --
 
@@ -55,6 +65,7 @@ return function(rig : Model)
     local CurrentPatrolCount = 0
     local CurrentPatrolTarget : Part? = pickPatrolPoint()
     local CurrentState = "PATROL"
+    local NextAttack = 0
     local NextPathRun = 0
     local NextPositionCheck = 0
     local LastPosition : Vector3? = rig.PrimaryPart.CFrame.Position
@@ -85,6 +96,18 @@ return function(rig : Model)
         LoadedAnim.Priority = id[2]
         LoadedAnims[tag] = LoadedAnim
     end
+
+    local AttackAnims = {}
+	for _, anim in pairs(ATTACK_ANIMS) do
+		local ThisAnim = Instance.new("Animation")
+		ThisAnim.AnimationId = "rbxassetid://"..anim
+		local LoadedAnim = rig.Humanoid.Animator:LoadAnimation(ThisAnim)
+        LoadedAnim.Priority = Enum.AnimationPriority.Action4
+        LoadedAnim.Looped = false
+		ThisAnim:Destroy()
+
+		table.insert(AttackAnims, LoadedAnim)
+	end
 
     -- [[ Main life cycle ]] --
 
@@ -233,9 +256,23 @@ return function(rig : Model)
             Path:Run(SensedTarget.PrimaryPart.CFrame.Position)
         end
 
+        -- Attacking
+        local DistanceFromTarget = (SensedTarget.PrimaryPart.CFrame.Position - rig.PrimaryPart.CFrame.Position).Magnitude
+        if DistanceFromTarget < 6 and os.clock() >= NextAttack then
+            NextAttack = os.clock() + ATTACK_INTERVAL
+            AttackAnims[math.random(1, #AttackAnims)]:Play()
+            PlaySound(ATTACK_SOUNDS[math.random(1, #ATTACK_SOUNDS)], "Attack", rig.PrimaryPart, nil, 1, Rand:NextNumber(0.95, 1.05))
+        end
+
         TimeSinceUpdate += dt
         if TimeSinceUpdate >= UPDATE_INTERVAL then
             updateAwareness(TimeSinceUpdate)
+
+            -- Exits Chase if awareness < 3
+            if Awareness < 3 then
+                CurrentState = "PATROL"
+            end
+
             TimeSinceUpdate = 0
         end
     end
@@ -262,7 +299,7 @@ return function(rig : Model)
             NextPositionCheck = os.clock() + 1/4
             local DistanceRan = (rig.PrimaryPart.Position - LastPosition).Magnitude
             
-            if DistanceRan > 1 then
+            if DistanceRan > 1 and not Humanoid.FloorMaterial ~= Enum.Material.Air then
                 if not LoadedAnims[MoveAnim].IsPlaying then
                     LoadedAnims[MoveAnim]:Play()
                     LoadedAnims.Idle:Stop()
@@ -276,6 +313,24 @@ return function(rig : Model)
             end
 
             LastPosition = rig.PrimaryPart.Position
+        end
+    end)
+
+    -- Falling animation
+    if Humanoid:GetState() == Enum.HumanoidStateType.Freefall then
+        if not LoadedAnims.Fall.IsPlaying then
+            LoadedAnims.Fall:Play()
+        end
+    else
+        if LoadedAnims.Fall.IsPlaying then
+            LoadedAnims.Fall:Stop()
+        end
+    end
+
+    -- Landing animation
+    Humanoid.StateChanged:Connect(function(old, new)
+        if new == Enum.HumanoidStateType.Landed then
+            -- LoadedAnims.Land:Play()
         end
     end)
 

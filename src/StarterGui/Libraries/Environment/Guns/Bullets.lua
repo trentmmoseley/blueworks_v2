@@ -49,7 +49,7 @@ local function createBullet(shooter : Model, origin : Vector3, ammotype : string
 	BulletCount += 1
 
     local VM = game.Workspace.CurrentCamera:FindFirstChild("Viewmodel")
-    local Barrel = shooter:FindFirstChild("_barrel", true) or ((shooter == Character and VM ~= nil) and VM:FindFirstChild("_barrel", true) or nil)
+    local Barrel = shooter:FindFirstChildOfClass("Tool"):FindFirstChild("_barrel", true) or ((shooter == Character and VM ~= nil) and VM:FindFirstChild("_barrel", true) or nil)
 
     -- Light effects
     local Suppressor = tool:FindFirstChild("_suppressor", true)
