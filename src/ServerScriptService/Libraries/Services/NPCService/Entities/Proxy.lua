@@ -42,7 +42,7 @@ local SIGHT_FOV      = 0.5  -- minimum facing alignment (LookVector dot directio
 
 local UPDATE_INTERVAL = 1/4 -- seconds between awareness checks and path re-runs
 
-local ATTACK_INTERVAL = 1/2
+local ATTACK_INTERVAL = 3/4
 
 -- [[ funcs ]] --
 
