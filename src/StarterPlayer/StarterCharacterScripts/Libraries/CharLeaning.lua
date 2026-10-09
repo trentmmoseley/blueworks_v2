@@ -57,7 +57,7 @@ function LeaningAndFootsteps.Function()
 
         -- Manages characters
 		for _, Character in pairs(game.Workspace:WaitForChild("Characters"):GetChildren()) do
-            if Character == Players.LocalPlayer.Character and Player.CameraMode == Enum.CameraMode.LockFirstPerson then continue end
+            if (Character == Players.LocalPlayer.Character and Player.CameraMode == Enum.CameraMode.LockFirstPerson) or Character:GetAttribute("isNPC") == true then continue end
 
             local Humanoid  = Character:WaitForChild("Humanoid")
             if Humanoid.Health <= 0 then continue end
