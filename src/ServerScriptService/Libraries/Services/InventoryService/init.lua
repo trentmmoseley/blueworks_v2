@@ -19,10 +19,12 @@ local Tools             = S2.Tools
 InvService.ItemAdded    = _G.Signal.new()
 
 local GunAttach         = require(RepStorage.Modules.Util.GunAttach)
+local WeldPiece         = require(RepStorage.Modules.Util.WeldPiece)
 
 -- Vars and consts
 local COMPILE_VALS      = {"Stack", "Ammo", "Class"} -- values that carry with a specific item 
 local SKIP_VALS         = {"Name", "Tier", "MAX_STACK"}
+local HOLSTER_PARTS     = {[1] = "Primary", [2] = "Secondary", [3] = "Melee"} -- ItemInfo.HolsterType -> part in the Torso's HolsterSystem model
 
 -- [[ funcs ]] --
 
@@ -170,11 +172,81 @@ function InvService:KnitInit() : ()
         local ItemConnection : RBXScriptConnection? = nil
         local UnequipConnection : RBXScriptConnection? = nil
         local StackConnection : RBXScriptConnection? = nil
+        local HolsterSystem : Model? = nil
+        local HolsterItems : Folder? = nil
 
         local function updateInv()
             if not Player then return end
             self.Client.UpdateInventory:Fire(Player, self:SerializeItems(InvClass.Items), InvClass.CurrentSlot, InvClass.MaxSlots)
         end
+
+        -- Rebuilds the character's holstered weapon displays from its inventory.
+        -- Every item whose ItemInfo has a HolsterType is cloned from ItemDisplays
+        -- and welded to the matching part of the Torso's HolsterSystem model,
+        -- except the currently equipped item. The Items folder is recreated if
+        -- it is missing from the model.
+        local function updateHolster() : ()
+            if not HolsterSystem then return end
+
+            if not HolsterItems then
+                HolsterItems = HolsterSystem:FindFirstChild("Items") or Instance.new("Folder")
+                HolsterItems.Name = "Items"
+                HolsterItems.Parent = HolsterSystem
+            end
+
+            HolsterItems:ClearAllChildren()
+
+            for slot, item in InvClass.Items do
+                if slot == InvClass.CurrentSlot then continue end
+
+                local ToolRef = Tools:FindFirstChild(item.Name, true)
+                local ItemInfo = ToolRef and require(ToolRef.Configuration.ItemInfo)
+                local PartName = ItemInfo and HOLSTER_PARTS[ItemInfo.HolsterType]
+                local HolsterPart = PartName and HolsterSystem.Displays:FindFirstChild(PartName)
+                if not HolsterPart then continue end
+
+                local Display = DisplayFolder:FindFirstChild(item.Name)
+                if not Display then continue end
+                Display = Display:Clone()
+
+                -- Attachments for guns
+                local Atts = {}
+                for tag, val in item do
+                    if type(tag) == "string" and string.sub(tag, 1, 1) == "_" then
+                        Atts[tag] = val
+                    end
+                end
+
+                if item.Class == "Ranged" and next(Atts) then
+                    GunAttach(Display, Atts)
+                end
+
+                for _, part in Display:GetDescendants() do
+                    if part:IsA("BasePart") then
+                        part.Anchored = false
+                        part.CanCollide = false
+                        part.CanQuery = false
+                        part.CanTouch = false
+                        part.Massless = true
+                    end
+                end
+
+                Display:PivotTo(HolsterPart.CFrame)
+                WeldPiece(Display.PrimaryPart, HolsterPart)
+                Display.Parent = HolsterItems
+            end
+        end
+
+        -- Grabs the HolsterSystem model attached to the Torso; characters whose
+        -- model streams in late still populate because this re-runs the update
+        task.spawn(function()
+            local Torso = Character:WaitForChild("Torso", 10)
+            HolsterSystem = Torso and Torso:WaitForChild("HolsterSystem", 10)
+
+            if HolsterSystem then
+                updateHolster()
+            end
+        end)
 
         -- Completely unloads the equipped item: clears its inventory slot,
         -- destroys the tool, and disconnects its listeners
@@ -210,6 +282,7 @@ function InvService:KnitInit() : ()
             CurrentModule = nil
 
             updateInv()
+            updateHolster()
         end
 
         local function swapItem(slot : number, override : boolean?)
@@ -321,6 +394,8 @@ function InvService:KnitInit() : ()
                 -- Deactivate
                 CurrentItem.Deactivated:Connect(CurrentModule.onDeactivate)
             end
+
+            updateHolster()
         end
 
         updateInv()
@@ -328,6 +403,8 @@ function InvService:KnitInit() : ()
         self:AddItem(Character, S2.Tools.Ranged["Sniper Rifle"])
         self:AddItem(Character, S2.Tools.Ranged["Desert Eagle"])
         self:AddItem(Character, S2.Tools.Ranged["Russian Assault Rifle"])
+
+        updateHolster()
 
         -- Action request
         local ActionRequest = nil

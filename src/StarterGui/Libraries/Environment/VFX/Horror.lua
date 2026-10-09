@@ -9,12 +9,17 @@ local Sounds       = PlayerGui.Sounds.Horror
 -- Vars and consts
 local SOUND_ORDER  = {"Far", "Medium", "Near"}
 
+local NextHorror   = 0
+
 local Horror       = {
 
     ["Horror"]        = {
 
         ["RENDER_DISTANCE"] = math.huge,
         ["Function"]        = function(args)
+            if os.clock() < NextHorror then return end
+            NextHorror = os.clock() + 10
+
             local Intensity = args[1]
             Camera.FieldOfView += 10 * Intensity
             local SoundFolder = Sounds[SOUND_ORDER[Intensity]]:GetChildren()

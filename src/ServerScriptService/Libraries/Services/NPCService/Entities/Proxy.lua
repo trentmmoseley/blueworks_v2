@@ -262,14 +262,15 @@ return function(rig : Model)
             NextPositionCheck = os.clock() + 1/4
             local DistanceRan = (rig.PrimaryPart.Position - LastPosition).Magnitude
             
-            if DistanceRan > 1 or CurrentState == "CHASE" then
+            if DistanceRan > 1 then
                 if not LoadedAnims[MoveAnim].IsPlaying then
                     LoadedAnims[MoveAnim]:Play()
                     LoadedAnims.Idle:Stop()
                 end
             else
                 if LoadedAnims[MoveAnim].IsPlaying then
-                    LoadedAnims[MoveAnim]:Stop()
+                    LoadedAnims.Walk:Stop()
+                    LoadedAnims.Run:Stop()
                     LoadedAnims.Idle:Play()
                 end
             end
