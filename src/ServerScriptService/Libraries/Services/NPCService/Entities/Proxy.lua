@@ -5,6 +5,7 @@ local RepStorage      = game:GetService("ReplicatedStorage")
 local RunService      = game:GetService("RunService")
 
 local CharService     = _G.Knit.GetService("CharService")
+local CombatService   = _G.Knit.GetService("CombatService")
 local DetectService   = _G.Knit.GetService("DetectionService")
 local VFXService      = _G.Knit.GetService("VFXService")
 
@@ -27,6 +28,7 @@ local ANIMS         = {
 
 local ATTACK_ANIMS  = {97633645023236, 126985686457998, 123162586564812, 94060623091801}
 local ATTACK_SOUNDS = {7801336419, 7801329626}
+local HIT_SOUNDS    = {18512265986, 18512270266}
 
 local SPEEDS        = {
     PATROL          = 8,
@@ -50,13 +52,24 @@ local ATTACK_INTERVAL = 3/4
 local function pickPatrolPoint(currentspawn : Part?) : Part
     local Playspace = game.Workspace:WaitForChild("Playspace")
     local Spawns = Playspace.Spawns.Characters.Subjects:GetChildren()
-    
+
     local ChosenSpawn : Part? = currentspawn
     while ChosenSpawn == currentspawn do
         ChosenSpawn = Spawns[math.random(1, #Spawns)]
     end
 
     return ChosenSpawn
+end
+
+-- A target only counts while it is alive and still in the world; corpses and
+-- removed rigs must never keep the Proxy's attention
+local function isValidTarget(char : Model?) : boolean
+    if not char or not char.Parent or not char.PrimaryPart then
+        return false
+    end
+
+    local Hum = char:FindFirstChildOfClass("Humanoid")
+    return Hum ~= nil and Hum.Health > 0 and (char:GetAttribute("Health") or 0) > 0
 end
 
 return function(rig : Model)
@@ -128,7 +141,7 @@ return function(rig : Model)
         RayParams.FilterDescendantsInstances = {rig}
 
         for _, char in game.Workspace:WaitForChild("Characters"):GetChildren() do
-            if char ~= rig and char.PrimaryPart and char:GetAttribute("Team") ~= rig:GetAttribute("Team") and char.Humanoid.Health > 0 then
+            if char ~= rig and char:GetAttribute("Team") ~= rig:GetAttribute("Team") and isValidTarget(char) then
                 local Offset   = char.PrimaryPart.Position - EyePosition
                 local Distance = Offset.Magnitude
 
@@ -177,6 +190,11 @@ return function(rig : Model)
 
     -- Updates awareness
     local function updateAwareness(dt)
+        -- Drops targets that died or were removed while sensed
+        if SensedTarget and not isValidTarget(SensedTarget) then
+            SensedTarget = nil
+        end
+
         local Heard = hearPlayer()
 
         if Heard then
@@ -215,7 +233,7 @@ return function(rig : Model)
 
         if os.clock() >= NextPathRun then
             NextPathRun = os.clock() + 1/4
-            Path:Run(Awareness < 2 and CurrentPatrolTarget.CFrame.Position or SensedTarget.PrimaryPart.CFrame.Position)
+            Path:Run((Awareness < 2 or not isValidTarget(SensedTarget)) and CurrentPatrolTarget.CFrame.Position or SensedTarget.PrimaryPart.CFrame.Position)
 
             -- Choose new target if destination reached
             local Distance = (rig.PrimaryPart.CFrame.Position - CurrentPatrolTarget.CFrame.Position).Magnitude
@@ -229,7 +247,7 @@ return function(rig : Model)
         end
 
         -- Moves to chase if awareness > 2
-        if Awareness > 2 then
+        if Awareness > 2 and SensedTarget then
             CurrentState = "CHASE"
 
             local ChasingPlayer = Players:GetPlayerFromCharacter(SensedTarget)
@@ -249,9 +267,21 @@ return function(rig : Model)
             end
         end
     end
-    
+
     local function chase(dt)
-        if SensedTarget and os.clock() >= NextPathRun then
+        -- Dead or removed targets are dropped immediately so the Proxy reverts to
+        -- patrol (or picks up a new living target) instead of attacking the corpse
+        if not isValidTarget(SensedTarget) then
+            SensedTarget = nil
+            Awareness    = 0
+            HeardTime    = 0
+            UnheardTime  = 0
+            CurrentState = "PATROL"
+            updateDetection()
+            return
+        end
+
+        if os.clock() >= NextPathRun then
             NextPathRun = os.clock() + 1/4
             Path:Run(SensedTarget.PrimaryPart.CFrame.Position)
         end
@@ -262,6 +292,16 @@ return function(rig : Model)
             NextAttack = os.clock() + ATTACK_INTERVAL
             AttackAnims[math.random(1, #AttackAnims)]:Play()
             PlaySound(ATTACK_SOUNDS[math.random(1, #ATTACK_SOUNDS)], "Attack", rig.PrimaryPart, nil, 1, Rand:NextNumber(0.95, 1.05))
+
+            -- Hit detection
+            local RayParams = RaycastParams.new()
+            RayParams.FilterType = Enum.RaycastFilterType.Exclude
+            RayParams.FilterDescendantsInstances = {rig}
+
+            if DistanceFromTarget < 5 then
+                PlaySound(HIT_SOUNDS[math.random(1, #HIT_SOUNDS)], "Hit", SensedTarget.PrimaryPart, nil, 1, Rand:NextNumber(0.95, 1.05))
+                CombatService:Damage(rig, SensedTarget, math.random(20, 25), "PROXY", "DEFAULT", true, SensedTarget.Torso, {})
+            end
         end
 
         TimeSinceUpdate += dt
@@ -269,7 +309,7 @@ return function(rig : Model)
             updateAwareness(TimeSinceUpdate)
 
             -- Exits Chase if awareness < 3
-            if Awareness < 3 then
+            if Awareness < 3 or not SensedTarget then
                 CurrentState = "PATROL"
             end
 

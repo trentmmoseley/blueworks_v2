@@ -26,12 +26,24 @@ local MAX_CORPSES  = 12
 local REPL_WAIT    = 10 -- max seconds to wait for a rig's Humanoid/isNPC attribute to replicate in
 local CorpseCount  = 0
 
+-- Only Motor6Ds joining two of the character's own limbs may ragdoll; joints
+-- inside attached items (holstered gun displays, equipped tools) must stay
+-- rigid or the items flop around like extra limbs
+local function isLimbJoint(char : Model, joint : Motor6D) : boolean
+	if table.find(BL_M6D, joint.Name) or joint:FindFirstAncestor("Head") then
+		return false
+	end
+
+	local Part0, Part1 = joint.Part0, joint.Part1
+	return Part0 ~= nil and Part1 ~= nil and Part0.Parent == char and Part1.Parent == char
+end
+
 -- Builds joints
 local function buildJoints(char : Model)
 	local HRP = char:FindFirstChild("HumanoidRootPart")
 
 	for _, joint in pairs(char:GetDescendants()) do
-		if joint:IsA("Motor6D") and not table.find(BL_M6D, joint.Name) and not joint:FindFirstAncestor("Head") then
+		if joint:IsA("Motor6D") and isLimbJoint(char, joint) then
 			local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
 			a0.CFrame = joint.C0
 			a1.CFrame = joint.C1
@@ -92,7 +104,7 @@ function Ragdolls.toggleRagdoll(char : Model, isragdolled : boolean)
 
 	-- Motor6Ds
 	for _, m in pairs(char:GetDescendants()) do
-		if m:IsA("Motor6D") and not table.find(BL_M6D, m.Name) and not m:FindFirstAncestor("Head") then
+		if m:IsA("Motor6D") and isLimbJoint(char, m) then
 			m.Enabled = not isragdolled
 		elseif m:IsA("BasePart") then
 			m.CollisionGroup = isragdolled and "Default" or "PlayerChars"
