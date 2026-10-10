@@ -19,6 +19,8 @@ local Respawn         = require(RepStorage.Remotes.Respawn):Server()
 
 local GameValues      = RepStorage.GameValues
 
+CombatService.CharacterAttacked = _G.Signal.new()
+
 -- [[ funcs ]] --
 
 -- Damages entity
@@ -106,6 +108,8 @@ function CombatService:Damage(attacker : Model?, target : Model, damage : number
         if shedblood then
             self.VFXService:GlobalVFX("Blood", "Blood", target.PrimaryPart.CFrame, target.PrimaryPart.CFrame, damage, target.Name)
         end
+
+        self.CharacterAttacked:Fire(AttackerClass.Character, target)
     end
 
     return doesDamage

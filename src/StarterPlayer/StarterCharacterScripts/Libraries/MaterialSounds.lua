@@ -52,12 +52,12 @@ local function changeSoundID(sound, humanoid)
         FabricSpeed = Material ~= "Fabric" and 1 or 1.45
     end
 
-    -- Sound volume + playback speed
+    -- Sound volume + playback speed (invisible characters, e.g. a retreating Proxy, are silent)
     local Sound = FootstepSounds:FindFirstChild(Material)
     if Sound then
         sound.SoundId = Sound.SoundId
     end
-    sound.Volume = (Sound and Character:GetAttribute("isMoving") and humanoid.WalkSpeed > 1 and Material ~= "Air" and Character:FindFirstAncestor("Characters")) and 1 or 0
+    sound.Volume = (Sound and Character:GetAttribute("isMoving") and humanoid.WalkSpeed > 1 and Material ~= "Air" and Character:FindFirstAncestor("Characters") and not Character:GetAttribute("Invisible")) and 1 or 0
 
     -- playback speed tracks the rig's actual WalkSpeed, so running sounds faster,
     -- walking sounds slower, and NPCs (which never set a MovementType) match too
@@ -97,6 +97,11 @@ local function manageCharacter(char : Model)
         changeSoundID(RunSound, Humanoid)
     end)
 
+    -- invisibility can toggle without any humanoid property changing
+    local InvisibleConn = char:GetAttributeChangedSignal("Invisible"):Connect(function()
+        changeSoundID(RunSound, Humanoid)
+    end)
+
     -- walking sounds must never outlive the character
     local DiedConn = Humanoid.Died:Connect(function()
         RunSound:Stop()
@@ -113,6 +118,7 @@ local function manageCharacter(char : Model)
         -- rig left the game: drop every connection and the looping sound so nothing
         -- keeps firing (and potentially yielding) against a destroyed rig
         ChangedConn:Disconnect()
+        InvisibleConn:Disconnect()
         DiedConn:Disconnect()
         AncestryConn:Disconnect()
         RunSound:Destroy()

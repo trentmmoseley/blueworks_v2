@@ -22,8 +22,9 @@ local ANIMS         = {
     ["Walk"]        = {89468869841055, Enum.AnimationPriority.Movement},
     ["Hold"]        = {96432749173875, Enum.AnimationPriority.Action3},
     ["Jump"]        = {116496690680898, Enum.AnimationPriority.Action2},
-    ["Fall"]        = {119528283195927, Enum.AnimationPriority.Action},
+    ["Fall"]        = {119528283195927, Enum.AnimationPriority.Action3},
     ["Land"]        = {70926104383734, Enum.AnimationPriority.Action2},
+    ["Cloak"]       = {95947585478349, Enum.AnimationPriority.Action4}
 }
 
 local ATTACK_ANIMS  = {97633645023236, 126985686457998, 123162586564812, 94060623091801}
@@ -32,7 +33,14 @@ local HIT_SOUNDS    = {18512265986, 18512270266}
 
 local SPEEDS        = {
     PATROL          = 8,
-    CHASE           = 21
+    CHASE           = 21,
+    RETREAT         = 50,
+}
+
+local HEAL_RATES    = {
+    PATROL          = 5,
+    CHASE           = 0,
+    RETREAT         = 25,
 }
 
 local SENSE_ADVANCE  = 1/4 -- seconds of sensing a player needed to raise one Awareness level
@@ -45,6 +53,12 @@ local SIGHT_FOV      = 0.5  -- minimum facing alignment (LookVector dot directio
 local UPDATE_INTERVAL = 1/4 -- seconds between awareness checks and path re-runs
 
 local ATTACK_INTERVAL = 3/4
+
+local INVIS_LENGTH   = 0         -- 0 keeps the Proxy invisible until he is forced to phase back in
+local INVIS_STRENGTH = math.huge -- completely invisible (parts, decals, beams, particles, lights, GUIs)
+
+local MIN_FALL_TIME  = 1/5 -- seconds airborne before a landing counts as a real fall
+local MIN_FALL_DIST  = 4   -- studs dropped before a landing counts as a real fall
 
 -- [[ funcs ]] --
 
@@ -81,6 +95,7 @@ return function(rig : Model)
     local NextAttack = 0
     local NextPathRun = 0
     local NextPositionCheck = 0
+    local NextRetreatExit = 0
     local LastPosition : Vector3? = rig.PrimaryPart.CFrame.Position
     local LastTarget : Model? = nil
     local LastLevel = 0
@@ -127,6 +142,13 @@ return function(rig : Model)
 
 		table.insert(AttackAnims, LoadedAnim)
 	end
+
+    local CloakAmbience = Instance.new("Sound")
+    CloakAmbience.SoundId = "rbxassetid://9120275030"
+    CloakAmbience.Looped = true
+    CloakAmbience.Parent = rig.PrimaryPart
+    CloakAmbience.Volume = 0
+    CloakAmbience:Play()
 
     -- [[ Main life cycle ]] --
 
@@ -327,6 +349,49 @@ return function(rig : Model)
         end
     end
 
+    -- Ends the retreat: phases back into visibility and becomes vulnerable again
+    local function endRetreat()
+        PreviousPatrolTarget = CurrentPatrolTarget
+        CurrentPatrolTarget  = nil
+        CurrentState         = "PATROL"
+
+        RigClass.HealthClass.canBeAttacked = true
+        rig:SetAttribute("Invisible", false)
+        VFXService:GlobalVFX("Invisibility", "End", rig.PrimaryPart.CFrame, rig)
+
+        LoadedAnims.Cloak:Stop()
+
+        PlaySound(9126228629, "End", rig.PrimaryPart, nil, 1, 1)
+        CloakAmbience.Volume = 0
+    end
+
+    -- Runs to a random patrol point like patrol mode, but stays invisible and
+    -- does not look for new targets until he phases back into visibility
+    local function retreat()
+        if not CurrentPatrolTarget then
+            CurrentPatrolTarget = pickPatrolPoint(PreviousPatrolTarget)
+        end
+
+        if os.clock() >= NextPathRun then
+            NextPathRun = os.clock() + 1/4
+            Path:Run(CurrentPatrolTarget.CFrame.Position)
+
+            -- Phases back in once the patrol point is reached
+            local Distance = (rig.PrimaryPart.CFrame.Position - CurrentPatrolTarget.CFrame.Position).Magnitude
+            if Distance < 6 and os.clock() >= NextRetreatExit then
+                -- Returns immediately so the cloak is not restarted below on the same tick
+                endRetreat()
+                return
+            end
+        end
+
+        if not LoadedAnims.Cloak.IsPlaying then
+            PlaySound(9120769331, "Init", rig.PrimaryPart, nil, 1, 1)
+            LoadedAnims.Cloak:Play()
+            CloakAmbience.Volume = os.clock() >= NextRetreatExit and 1/2 or 0
+        end
+    end
+
     LoadedAnims.Hold:Play()
 
     LifeConn = RunService.PreSimulation:Connect(function(dt)
@@ -340,22 +405,33 @@ return function(rig : Model)
             patrol(dt)
         elseif CurrentState == "CHASE" then
             chase(dt)
+        elseif CurrentState == "RETREAT" then
+            retreat()
         end
+
+        -- Healing
+        RigClass.HealthClass:Increment(dt * HEAL_RATES[CurrentState])
 
         -- Animations
         if os.clock() >= NextPositionCheck then
-            local MoveAnim = CurrentState == "CHASE" and "Run" or "Walk"
+            local MoveAnim = (CurrentState == "CHASE" or CurrentState == "RETREAT") and "Run" or "Walk"
+            local OtherAnim = MoveAnim == "Run" and "Walk" or "Run"
 
             NextPositionCheck = os.clock() + 1/4
             local DistanceRan = (rig.PrimaryPart.Position - LastPosition).Magnitude
-            
+
             if DistanceRan > 1 and not Humanoid.FloorMaterial ~= Enum.Material.Air then
                 if not LoadedAnims[MoveAnim].IsPlaying then
                     LoadedAnims[MoveAnim]:Play()
                     LoadedAnims.Idle:Stop()
                 end
+
+                -- Stops the stale movement anim left over from a previous state
+                if LoadedAnims[OtherAnim].IsPlaying then
+                    LoadedAnims[OtherAnim]:Stop()
+                end
             else
-                if LoadedAnims[MoveAnim].IsPlaying then
+                if LoadedAnims.Walk.IsPlaying or LoadedAnims.Run.IsPlaying then
                     LoadedAnims.Walk:Stop()
                     LoadedAnims.Run:Stop()
                     LoadedAnims.Idle:Play()
@@ -366,21 +442,42 @@ return function(rig : Model)
         end
     end)
 
-    -- Falling animation
-    if Humanoid:GetState() == Enum.HumanoidStateType.Freefall then
-        if not LoadedAnims.Fall.IsPlaying then
-            LoadedAnims.Fall:Play()
-        end
-    else
-        if LoadedAnims.Fall.IsPlaying then
-            LoadedAnims.Fall:Stop()
-        end
-    end
-
-    -- Landing animation
+    -- Falling + landing animations
+    local FallStart = 0
+    local FallStartY : number? = nil
     Humanoid.StateChanged:Connect(function(old, new)
-        if new == Enum.HumanoidStateType.Landed then
-            -- LoadedAnims.Land:Play()
+        if new == Enum.HumanoidStateType.Freefall then
+            FallStart = os.clock()
+            FallStartY = FallStartY or rig.PrimaryPart.CFrame.Position.Y
+
+            if not LoadedAnims.Fall.IsPlaying then
+                LoadedAnims.Fall:Play()
+            end
+        else
+            if LoadedAnims.Fall.IsPlaying then
+                LoadedAnims.Fall:Stop()
+            end
+
+            -- Land only plays after a real fall: hopping in place when the pathfinding
+            -- is stuck barely drops the rig, so those landings never retrigger it
+            if new == Enum.HumanoidStateType.Landed
+                and old == Enum.HumanoidStateType.Freefall
+                and os.clock() - FallStart >= MIN_FALL_TIME
+                and FallStartY ~= nil and FallStartY - rig.PrimaryPart.CFrame.Position.Y >= MIN_FALL_DIST
+                and not LoadedAnims.Land.IsPlaying then
+                -- LoadedAnims.Land:Play()
+            end
+
+            FallStartY = nil
+        end
+    end)
+
+    -- Locks onto attacker whenever attacked
+    CombatService.CharacterAttacked:Connect(function(attacker : Model | Player, target)
+        if attacker and target == rig and CurrentState == "PATROL" then
+            SensedTarget = attacker
+            Awareness = 3
+            updateDetection()
         end
     end)
 
@@ -392,15 +489,28 @@ return function(rig : Model)
         Limit += DamageTaken
 
         -- Retreats if Limit is high enough
-        if Limit >= MaxLimit then
-            CurrentState = "PATROL"
+        if (Limit >= MaxLimit or Health == 0) and CurrentState ~= "RETREAT" then
+            CurrentState = "RETREAT"
             MaxLimit += (Limit - MaxLimit) * 4/3
             Limit = 0
             CurrentPatrolCount = 0
             CurrentPatrolTarget = pickPatrolPoint(PreviousPatrolTarget)
             SensedTarget = nil
             Awareness = 0
-            rig:PivotTo(CurrentPatrolTarget.CFrame)
+            updateDetection()
+
+            -- Phases out: invisible and immune to damage until the patrol point is reached
+            RigClass.HealthClass.canBeAttacked = false
+            rig:SetAttribute("Invisible", true)
+            VFXService:GlobalVFX("Invisibility", "Effect", rig.PrimaryPart.CFrame, rig, INVIS_LENGTH, INVIS_STRENGTH)
+
+            -- If health has dropped to zero
+            if Health == 0 then
+                NextRetreatExit = os.clock() + 30
+                rig:SetAttribute("MaxHealth", rig:GetAttribute("MaxHealth") * 5/4 + (Limit - MaxLimit))
+                rig:SetAttribute("Health", rig:GetAttribute("MaxHealth"))
+                MaxLimit *= 0.85
+            end
         end
 
         PrevHealth = Health
