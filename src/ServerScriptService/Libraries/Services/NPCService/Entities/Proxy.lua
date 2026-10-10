@@ -34,7 +34,7 @@ local HIT_SOUNDS    = {18512265986, 18512270266}
 local SPEEDS        = {
     PATROL          = 8,
     CHASE           = 21,
-    RETREAT         = 50,
+    RETREAT         = 40,
 }
 
 local HEAL_RATES    = {
@@ -393,6 +393,9 @@ return function(rig : Model)
     end
 
     LoadedAnims.Hold:Play()
+
+    -- Initial spawning
+    rig:PivotTo(pickPatrolPoint().CFrame)
 
     LifeConn = RunService.PreSimulation:Connect(function(dt)
         if not rig or not rig.Parent then
