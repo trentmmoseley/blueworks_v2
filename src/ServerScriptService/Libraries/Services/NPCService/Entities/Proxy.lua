@@ -91,12 +91,18 @@ return function(rig : Model)
     local HeardTime = 0
     local UnheardTime = 0
 
+    local Limit = 0
+    local MaxLimit = 60 -- how much limit must accumulate before retreating
+
     -- Sets stuff up
     local LifeConn : RBXScriptConnection
     local Path = SimplePath.new(rig)
 
     local RigClass = CharService:GetCharacterClass(rig)
     RigClass.HealthClass.humanoidDiesOnZero = false
+
+    rig:SetAttribute("MaxHealth", 600)
+    rig:SetAttribute("Health", 600)
 
     local Humanoid : Humanoid = rig:FindFirstChildOfClass("Humanoid")
 
@@ -240,6 +246,12 @@ return function(rig : Model)
             if Distance < 6 then
                 PreviousPatrolTarget = CurrentPatrolTarget
                 CurrentPatrolTarget = nil
+
+                if CurrentPatrolCount >= 3 then
+                    CurrentPatrolTarget = pickPatrolPoint(PreviousPatrolTarget)
+                    rig:PivotTo(CurrentPatrolTarget.CFrame)
+                    CurrentPatrolCount = 0
+                end
             end
 
             updateAwareness(TimeSinceUpdate)
@@ -298,10 +310,8 @@ return function(rig : Model)
             RayParams.FilterType = Enum.RaycastFilterType.Exclude
             RayParams.FilterDescendantsInstances = {rig}
 
-            if DistanceFromTarget < 5 then
-                PlaySound(HIT_SOUNDS[math.random(1, #HIT_SOUNDS)], "Hit", SensedTarget.PrimaryPart, nil, 1, Rand:NextNumber(0.95, 1.05))
-                CombatService:Damage(rig, SensedTarget, math.random(20, 25), "PROXY", "DEFAULT", true, SensedTarget.Torso, {})
-            end
+            PlaySound(HIT_SOUNDS[math.random(1, #HIT_SOUNDS)], "Hit", SensedTarget.PrimaryPart, nil, 1, Rand:NextNumber(0.95, 1.05))
+            CombatService:Damage(rig, SensedTarget, math.random(20, 25), "PROXY", "DEFAULT", true, SensedTarget.Torso, {})
         end
 
         TimeSinceUpdate += dt
@@ -372,6 +382,28 @@ return function(rig : Model)
         if new == Enum.HumanoidStateType.Landed then
             -- LoadedAnims.Land:Play()
         end
+    end)
+
+    -- Limit
+    local PrevHealth = rig:GetAttribute("Health")
+    rig:GetAttributeChangedSignal("Health"):Connect(function()
+        local Health = rig:GetAttribute("Health")
+        local DamageTaken = math.max(PrevHealth - Health, 0)
+        Limit += DamageTaken
+
+        -- Retreats if Limit is high enough
+        if Limit >= MaxLimit then
+            CurrentState = "PATROL"
+            MaxLimit += (Limit - MaxLimit) * 4/3
+            Limit = 0
+            CurrentPatrolCount = 0
+            CurrentPatrolTarget = pickPatrolPoint(PreviousPatrolTarget)
+            SensedTarget = nil
+            Awareness = 0
+            rig:PivotTo(CurrentPatrolTarget.CFrame)
+        end
+
+        PrevHealth = Health
     end)
 
     repeat task.wait() until not LifeConn
