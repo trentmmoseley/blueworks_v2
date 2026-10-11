@@ -15,6 +15,7 @@ local GunClass         = require(script.GunClass)
 local HealthClass      = require(script.HealthClass)
 local HitboxClass      = require(script.HitboxClass)
 local InvClass         = require(script.InventoryClass)
+local LeanClass        = require(script.LeanClass)
 local MovementClass    = require(script.MovementClass)
 local NoiseClass       = require(script.NoiseClass)
 local ScoreClass       = require(script.ScoreClass)
@@ -39,6 +40,7 @@ function CharacterClass.new(character : Model) : {}
         HealthClass.new(Self),
         HitboxClass.new(Self),
         InvClass.new(Self),
+        LeanClass.new(Self),
         MovementClass.new(Self),
         NoiseClass.new(Self),
         ScoreClass.new(Self),

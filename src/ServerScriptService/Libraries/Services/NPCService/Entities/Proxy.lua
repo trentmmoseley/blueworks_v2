@@ -6,6 +6,7 @@ local RunService      = game:GetService("RunService")
 
 local CharService     = _G.Knit.GetService("CharService")
 local CombatService   = _G.Knit.GetService("CombatService")
+local CommsService    = _G.Knit.GetService("CommsService")
 local DetectService   = _G.Knit.GetService("DetectionService")
 local VFXService      = _G.Knit.GetService("VFXService")
 
@@ -57,6 +58,8 @@ local ATTACK_INTERVAL = 3/4
 local INVIS_LENGTH   = 0         -- 0 keeps the Proxy invisible until he is forced to phase back in
 local INVIS_STRENGTH = math.huge -- completely invisible (parts, decals, beams, particles, lights, GUIs)
 
+local RETREAT_TIMEOUT = 15 -- seconds before a stuck retreat phases back in anyway
+
 local MIN_FALL_TIME  = 1/5 -- seconds airborne before a landing counts as a real fall
 local MIN_FALL_DIST  = 4   -- studs dropped before a landing counts as a real fall
 
@@ -96,6 +99,7 @@ return function(rig : Model)
     local NextPathRun = 0
     local NextPositionCheck = 0
     local NextRetreatExit = 0
+    local RetreatStart = 0
     local LastPosition : Vector3? = rig.PrimaryPart.CFrame.Position
     local LastTarget : Model? = nil
     local LastLevel = 0
@@ -372,6 +376,14 @@ return function(rig : Model)
             CurrentPatrolTarget = pickPatrolPoint(PreviousPatrolTarget)
         end
 
+        -- Failsafe: phases back in with or without reaching the patrol point, so a
+        -- pathfinding softlock can never trap him in Retreat (a health-zero retreat
+        -- still lasts its full thirty seconds)
+        if os.clock() >= math.max(NextRetreatExit, RetreatStart + RETREAT_TIMEOUT) then
+            endRetreat()
+            return
+        end
+
         if os.clock() >= NextPathRun then
             NextPathRun = os.clock() + 1/4
             Path:Run(CurrentPatrolTarget.CFrame.Position)
@@ -494,6 +506,7 @@ return function(rig : Model)
         -- Retreats if Limit is high enough
         if (Limit >= MaxLimit or Health == 0) and CurrentState ~= "RETREAT" then
             CurrentState = "RETREAT"
+            RetreatStart = os.clock()
             MaxLimit += (Limit - MaxLimit) * 4/3
             Limit = 0
             CurrentPatrolCount = 0
@@ -513,6 +526,7 @@ return function(rig : Model)
                 rig:SetAttribute("MaxHealth", rig:GetAttribute("MaxHealth") * 5/4 + (Limit - MaxLimit))
                 rig:SetAttribute("Health", rig:GetAttribute("MaxHealth"))
                 MaxLimit *= 0.85
+                CommsService:GlobalSubtitle("PNDR-4075 has retreated for 30 seconds", Color3.fromRGB(87, 140, 84), true)
             end
         end
 
