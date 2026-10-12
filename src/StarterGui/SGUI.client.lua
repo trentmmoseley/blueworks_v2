@@ -65,8 +65,19 @@ else
 end
 
 -- [[ FPS + MOUSE ]] --
+local FPS = 60
+local FrameCount = 0
+local LastFPSUpdate = 0
+
 RunService.RenderStepped:Connect(function(dt)
 	Mouse.Icon = "rbxassetid://68308747"
+	FrameCount += 1
+
+	if os.clock() >= LastFPSUpdate + 1/2 then
+		FPS = FrameCount / (os.clock() - LastFPSUpdate)
+		FrameCount = 0
+		LastFPSUpdate = os.clock()
+	end
 end)
 
 -- [[ LOADS MODULES ]] --
@@ -74,6 +85,15 @@ repeat task.wait() until Player:GetAttribute("Device")
 for _, mod in pairs(Libraries:GetDescendants()) do
 	if mod:IsA("ModuleScript") and not table.find({"_template", "_mousetracking"}, mod.Name) and not mod.Parent:IsA("ModuleScript") and not mod:FindFirstAncestor("Controllers") then
 		task.spawn(require(mod).Function)
+	end
+end
+
+RemFuncs.getLocalVal.OnClientInvoke = function(...)
+	local Info = {...}
+	local ValName = Info[1]
+
+	if ValName == "FPS" then
+		return FPS
 	end
 end
 

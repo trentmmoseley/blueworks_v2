@@ -37,4 +37,5 @@ end)
 --[[for i = 1, 8 do
 	local Tethered = _G.Knit.GetService("NPCService"):CreateNPC("Human", CFrame.new(0, 10, i * 10))
 end]]--
+_G.Knit.GetService("MapService"):Interactables()
 local Proxy = _G.Knit.GetService("NPCService"):CreateNPC("Proxy", CFrame.new(20, 10, 0))

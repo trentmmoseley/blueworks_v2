@@ -109,7 +109,9 @@ function CombatService:Damage(attacker : Model?, target : Model, damage : number
             self.VFXService:GlobalVFX("Blood", "Blood", target.PrimaryPart.CFrame, target.PrimaryPart.CFrame, damage, target.Name)
         end
 
-        self.CharacterAttacked:Fire(AttackerClass.Character, target)
+        if AttackerClass and AttackerClass.Character then
+            self.CharacterAttacked:Fire(AttackerClass.Character, target)
+        end
     end
 
     return doesDamage
