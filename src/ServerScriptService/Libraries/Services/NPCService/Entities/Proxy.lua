@@ -16,6 +16,7 @@ local SimplePath      = require(RepStorage.Modules.Util.SimplePath)
 
 -- Vars and consts
 local PATROL_INTERVAL = 3
+local PATROL_TIMEOUT  = 30 -- seconds before an unreachable patrol point is skipped
 
 local ANIMS         = {
     ["Idle"]        = {91585323243859, Enum.AnimationPriority.Idle},
@@ -94,6 +95,7 @@ return function(rig : Model)
     local Awareness = 0 -- 0 = unaware, 1 = sensing, 2 = following, 3 = chase
     local CurrentPatrolCount = 0
     local CurrentPatrolTarget : Part? = pickPatrolPoint()
+    local PatrolTargetStart = os.clock() -- when the current patrol target was picked
     local CurrentState = "PATROL"
     local NextAttack = 0
     local NextPathRun = 0
@@ -258,6 +260,7 @@ return function(rig : Model)
     local function patrol(dt)
         if not CurrentPatrolTarget then
            CurrentPatrolTarget = pickPatrolPoint(PreviousPatrolTarget)
+           PatrolTargetStart = os.clock()
            CurrentPatrolCount += 1
         end
 
@@ -267,14 +270,16 @@ return function(rig : Model)
             NextPathRun = os.clock() + 1/4
             Path:Run((Awareness < 2 or not isValidTarget(SensedTarget)) and CurrentPatrolTarget.CFrame.Position or SensedTarget.PrimaryPart.CFrame.Position)
 
-            -- Choose new target if destination reached
+            -- Choose new target if destination reached; if it cannot be reached within
+            -- thirty seconds, move on to the next as if it had been reached
             local Distance = (rig.PrimaryPart.CFrame.Position - CurrentPatrolTarget.CFrame.Position).Magnitude
-            if Distance < 6 then
+            if Distance < 6 or os.clock() - PatrolTargetStart >= PATROL_TIMEOUT then
                 PreviousPatrolTarget = CurrentPatrolTarget
                 CurrentPatrolTarget = nil
 
                 if CurrentPatrolCount >= 3 then
                     CurrentPatrolTarget = pickPatrolPoint(PreviousPatrolTarget)
+                    PatrolTargetStart = os.clock()
                     rig:PivotTo(CurrentPatrolTarget.CFrame)
                     CurrentPatrolCount = 0
                 end
