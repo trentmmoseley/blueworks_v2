@@ -125,8 +125,11 @@ local function Break(part, center)
 			local NewShatter = GlassShatter:Clone()
 			NewShatter.Color = ColorSequence.new(part.Color)
 			NewShatter.Parent = p
-			NewShatter:Emit(20)
-			Debris:AddItem(NewShatter, 3)
+			task.defer(function()
+				NewShatter.Enabled = true
+				task.wait(1)
+				NewShatter.Enabled = false
+			end)
 			Debris:AddItem(p, math.random(30, 120))
 		end
 	end
