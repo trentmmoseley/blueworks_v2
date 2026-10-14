@@ -8,6 +8,7 @@ local CharService     = _G.Knit.GetService("CharService")
 local CombatService   = _G.Knit.GetService("CombatService")
 local CommsService    = _G.Knit.GetService("CommsService")
 local DetectService   = _G.Knit.GetService("DetectionService")
+local EffectService   = _G.Knit.GetService("EffectService")
 local VFXService      = _G.Knit.GetService("VFXService")
 
 -- Modules and objects
@@ -326,13 +327,31 @@ return function(rig : Model)
             AttackAnims[math.random(1, #AttackAnims)]:Play()
             PlaySound(ATTACK_SOUNDS[math.random(1, #ATTACK_SOUNDS)], "Attack", rig.PrimaryPart, nil, 1, Rand:NextNumber(0.95, 1.05))
 
-            -- Hit detection
-            local RayParams = RaycastParams.new()
-            RayParams.FilterType = Enum.RaycastFilterType.Exclude
-            RayParams.FilterDescendantsInstances = {rig}
+            -- Hit detection: swings through everything within reach in a 180 degree
+            -- frontal arc, not just the chased target
+            local AttackPosition = rig.PrimaryPart.CFrame.Position
+            local LookVector     = rig.PrimaryPart.CFrame.LookVector
 
-            PlaySound(HIT_SOUNDS[math.random(1, #HIT_SOUNDS)], "Hit", SensedTarget.PrimaryPart, nil, 1, Rand:NextNumber(0.95, 1.05))
-            CombatService:Damage(rig, SensedTarget, math.random(20, 25), "PROXY", "DEFAULT", true, SensedTarget.Torso, {})
+            for _, char in game.Workspace:WaitForChild("Characters"):GetChildren() do
+                if char ~= rig and char:GetAttribute("Team") ~= rig:GetAttribute("Team") and isValidTarget(char) then
+                    local Offset = char.PrimaryPart.Position - AttackPosition
+
+                    -- Dot >= 0 means the target is within 90 degrees of either side of
+                    -- the LookVector, i.e. anywhere in the 180 degree arc in front
+                    if Offset.Magnitude < 6 and Offset.Unit:Dot(LookVector) >= 0 then
+                        PlaySound(HIT_SOUNDS[math.random(1, #HIT_SOUNDS)], "Hit", char.PrimaryPart, nil, 1, Rand:NextNumber(0.95, 1.05))
+                        CombatService:Damage(rig, char, math.random(20, 25), "PROXY", "DEFAULT", true, char.Torso, {})
+
+                        if Rand:NextNumber() < 0.05 then
+                            EffectService:Add(char, "Bleeding", 30)
+                        end
+
+                        if Rand:NextNumber() < 0.025 then
+                            EffectService:Add(char, "Arterial Bleeding", 30)
+                        end
+                    end
+                end
+            end
         end
 
         TimeSinceUpdate += dt
