@@ -24,6 +24,8 @@ local GunService      = Knit.CreateService({
 local GunRequest      = require(RepStorage.Remotes.GunRequest):Server()
 local HitDetection    = require(RepStorage.Remotes.HitDetection):Server()
 
+local Glass           = require(script.Parent.MapService.Glass)
+
 -- [[ funcs ]] --
 
 -- Increments ammo
@@ -229,6 +231,8 @@ function GunService:KnitInit() : ()
                 if info.HitInstance.Transparency < 1 then
                     _G.Knit.GetService("VFXService"):GlobalVFX("BulletHole", "BulletHole", info.Position, info.Position, info.Normal, info.HitInstance)
                 end
+            else
+                info.HitInstance.Durability.Value -= Info.Damage
             end
         end
 

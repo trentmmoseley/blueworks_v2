@@ -68,7 +68,7 @@ function DetectionService:DetectPlayer(entity : Model, target : Model, level : n
             end
         end
 
-        self.Client.DetectionUpdate:Fire(Player, HighestLevel)
+        self.Client.DetectionUpdate:Fire(Player, HighestLevel, entity, level or 0)
     end
 end
 

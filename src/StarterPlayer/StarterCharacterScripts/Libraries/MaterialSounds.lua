@@ -11,6 +11,7 @@ local Player          = Players.LocalPlayer
 -- Modules and objects
 local Characters      = game.Workspace:WaitForChild("Characters")
 local Lerp            = require(RepStorage.Modules.Util.Math.Lerp)
+local MmtSettings     = require(RepStorage.Modules.Data.MovementSettings)
 
 -- Vars and consts
 local REPLICATE_WAIT  = 10 -- max seconds to wait for a rig's parts to replicate in
@@ -53,11 +54,12 @@ local function changeSoundID(sound, humanoid)
     end
 
     -- Sound volume + playback speed (invisible characters, e.g. a retreating Proxy, are silent)
+    local MovementInfo = MmtSettings[Character:GetAttribute("MovementType")]
     local Sound = FootstepSounds:FindFirstChild(Material)
     if Sound then
         sound.SoundId = Sound.SoundId
     end
-    sound.Volume = (Sound and Character:GetAttribute("isMoving") and humanoid.WalkSpeed > 1 and Material ~= "Air" and Character:FindFirstAncestor("Characters") and not Character:GetAttribute("Invisible")) and 1 or 0
+    sound.Volume = (Sound and Character:GetAttribute("isMoving") and humanoid.WalkSpeed > 1 and Material ~= "Air" and Character:FindFirstAncestor("Characters") and not Character:GetAttribute("Invisible") and not (MovementInfo and MovementInfo.crouchMMT)) and 1 or 0
 
     -- playback speed tracks the rig's actual WalkSpeed, so running sounds faster,
     -- walking sounds slower, and NPCs (which never set a MovementType) match too
@@ -102,6 +104,11 @@ local function manageCharacter(char : Model)
         changeSoundID(RunSound, Humanoid)
     end)
 
+    -- same for switching in/out of a crouched MovementType
+    local MmtConn = char:GetAttributeChangedSignal("MovementType"):Connect(function()
+        changeSoundID(RunSound, Humanoid)
+    end)
+
     -- walking sounds must never outlive the character
     local DiedConn = Humanoid.Died:Connect(function()
         RunSound:Stop()
@@ -119,6 +126,7 @@ local function manageCharacter(char : Model)
         -- keeps firing (and potentially yielding) against a destroyed rig
         ChangedConn:Disconnect()
         InvisibleConn:Disconnect()
+        MmtConn:Disconnect()
         DiedConn:Disconnect()
         AncestryConn:Disconnect()
         RunSound:Destroy()

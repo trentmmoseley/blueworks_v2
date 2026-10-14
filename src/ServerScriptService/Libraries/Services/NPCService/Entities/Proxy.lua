@@ -296,17 +296,7 @@ return function(rig : Model)
             local ChasingPlayer = Players:GetPlayerFromCharacter(SensedTarget)
             if ChasingPlayer then
                 -- Jumpscares player
-                local Intensity = 1
-                local Distances = {50, 20}
-
-                local DistanceFromTarget = (rig.PrimaryPart.CFrame.Position - SensedTarget.PrimaryPart.CFrame.Position).Magnitude
-                for i, dist in Distances do
-                    if DistanceFromTarget < dist then
-                        Intensity += 1
-                    end
-                end
-
-                VFXService:PlayVFX(ChasingPlayer, "Horror", "Horror", rig.PrimaryPart.CFrame, Intensity)
+                VFXService:PlayVFX(ChasingPlayer, "Horror", "Horror", rig.PrimaryPart.CFrame, rig, Awareness)
             end
         end
     end

@@ -169,6 +169,8 @@ function MovementClass:Step(dt)
         self.Velocity = Displacement
     end
 
+    self.CharacterClass.NoiseClass:SetNoise("Movement", MmtInfo.Noise * self.Velocity.Magnitude * 4 * (not (self.Humanoid:GetState() == Enum.HumanoidStateType.Jumping or self.Humanoid:GetState() == Enum.HumanoidStateType.Freefall) and 1 or 0), false)
+
     local JumpHeight = DEFAULT_JUMP * (MmtInfo.canJump and 1 or 0)
     if JumpHeight ~= self._lastJumpHeight then
         self._lastJumpHeight = JumpHeight
