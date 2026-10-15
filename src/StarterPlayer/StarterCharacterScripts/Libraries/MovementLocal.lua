@@ -213,7 +213,7 @@ function MovementLocal.Function()
                 Humanoid:Move(Vector3.zero, false)
             end
 
-            Humanoid.JumpHeight = Character:GetAttribute("Stamina") >= 20 and 3 or 0
+            Humanoid.JumpHeight = Character:GetAttribute("Stamina") >= 20 and (MMT_SETTINGS[MovementType].canJump and 3 or 0) or 0
 
             WindSound.Volume = math.abs(Character.PrimaryPart.AssemblyLinearVelocity.Y / 100) ^ 3
 			WindSound.PlaybackSpeed = Lerp(0.75, 1.5, Progress(WindSound.Volume, 0, 1))

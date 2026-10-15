@@ -12,7 +12,7 @@ local MMT_SETTINGS    = require(RepStorage.Modules.Data.MovementSettings)
 local PlaySound       = require(RepStorage.Modules.Util.PlaySound)
 
 -- Vars and consts
-local DEFAULT_JUMP      = 2
+local DEFAULT_JUMP      = 3
 local JUMP_STAMINA_COST = 10
 local FLAG_THRESHOLD    = 30
 local FDV_THRESHOLD     = 35 -- fall at 30+ studs per second to sustain fall damage
