@@ -9,9 +9,11 @@ local CombatService   = _G.Knit.GetService("CombatService")
 local CommsService    = _G.Knit.GetService("CommsService")
 local DetectService   = _G.Knit.GetService("DetectionService")
 local EffectService   = _G.Knit.GetService("EffectService")
+local RoundService    = _G.Knit.GetService("RoundService")
 local VFXService      = _G.Knit.GetService("VFXService")
 
 -- Modules and objects
+local Lerp            = require(RepStorage.Modules.Util.Math.Lerp)
 local PlaySound       = require(RepStorage.Modules.Util.PlaySound)
 local SimplePath      = require(RepStorage.Modules.Util.SimplePath)
 
@@ -27,8 +29,11 @@ local ANIMS         = {
     ["Jump"]        = {116496690680898, Enum.AnimationPriority.Action2},
     ["Fall"]        = {119528283195927, Enum.AnimationPriority.Action3},
     ["Land"]        = {70926104383734, Enum.AnimationPriority.Action2},
-    ["Cloak"]       = {95947585478349, Enum.AnimationPriority.Action4}
+    ["Cloak"]       = {95947585478349, Enum.AnimationPriority.Action4},
+    ["Grab"]        = {88986754999227, Enum.AnimationPriority.Action4}
 }
+
+local ANIM_GRAB_VICTIM = 121534838798001
 
 local ATTACK_ANIMS  = {97633645023236, 126985686457998, 123162586564812, 94060623091801}
 local ATTACK_SOUNDS = {7801336419, 7801329626}
@@ -37,14 +42,26 @@ local HIT_SOUNDS    = {18512265986, 18512270266}
 local SPEEDS        = {
     PATROL          = 8,
     CHASE           = 21,
+    STALK           = 1,
     RETREAT         = 40,
 }
 
 local HEAL_RATES    = {
     PATROL          = 5,
     CHASE           = 0,
+    STALK           = 0,
     RETREAT         = 25,
 }
+
+local STALK_NODE_PROGRESS       = 0.25
+local STALK_CHANCE              = 1
+local STALK_DURATION            = 20
+local STALK_REVEAL_DISTANCE     = 6
+local STALK_ABORT_DISTANCE      = 30
+local STALK_TELEPORT_DELAY      = 1/2
+local STALK_TELEPORT_RANGE      = 15
+local STALK_TELEPORT_CLEARANCE  = 2
+local STALK_TELEPORT_ATTEMPTS   = 12
 
 local SENSE_ADVANCE  = 1/4 -- seconds of sensing a player needed to raise one Awareness level
 local SENSE_DECAY    = 5   -- seconds of sensing no one needed to drop one Awareness level
@@ -108,7 +125,11 @@ return function(rig : Model)
     local LastLevel = 0
     local PreviousPatrolTarget = nil
     local SensedTarget = nil
+    local StalkStart = 0
+    local StalkTeleportCFrame : CFrame? = nil
+    local StalkDetectedTargets = {}
     local TimeSinceUpdate = 0
+    local TotalDamage = 0
 
     local HeardTime = 0
     local UnheardTime = 0
@@ -159,6 +180,38 @@ return function(rig : Model)
 
     -- [[ Main life cycle ]] --
 
+    -- Calculates aggression level
+    local function aggroLevel() : number
+        return 1 + (RoundService:NodeProgress() * 0.75) + TotalDamage / 1600
+    end
+
+    local function getValidTargets() : {Model}
+        local Targets = {}
+
+        for _, char in game.Workspace:WaitForChild("Characters"):GetChildren() do
+            if char ~= rig and char:GetAttribute("Team") ~= rig:GetAttribute("Team") and isValidTarget(char) then
+                table.insert(Targets, char)
+            end
+        end
+
+        return Targets
+    end
+
+    local function getNearestTarget(Targets : {Model}, Origin : Vector3) : (Model?, number)
+        local NearestTarget = nil
+        local NearestDistance = math.huge
+
+        for _, char in Targets do
+            local Distance = (char.PrimaryPart.CFrame.Position - Origin).Magnitude
+            if Distance < NearestDistance then
+                NearestTarget = char
+                NearestDistance = Distance
+            end
+        end
+
+        return NearestTarget, NearestDistance
+    end
+
     -- Detecting player via Noise and Sight
     local function hearPlayer() : Model?
         if not rig.PrimaryPart then
@@ -175,29 +228,27 @@ return function(rig : Model)
         RayParams.FilterType = Enum.RaycastFilterType.Exclude
         RayParams.FilterDescendantsInstances = {rig}
 
-        for _, char in game.Workspace:WaitForChild("Characters"):GetChildren() do
-            if char ~= rig and char:GetAttribute("Team") ~= rig:GetAttribute("Team") and isValidTarget(char) then
-                local Offset   = char.PrimaryPart.Position - EyePosition
-                local Distance = Offset.Magnitude
+        for _, char in getValidTargets() do
+            local Offset   = char.PrimaryPart.Position - EyePosition
+            local Distance = Offset.Magnitude
 
-                -- Sight: needs to be in front of self with an unobstructed line to the target
-                if Distance < SIGHT_RANGE and (Distance < 1 or Offset.Unit:Dot(LookVector) > SIGHT_FOV) then
-                    local Raycast = game.Workspace:Raycast(EyePosition, Offset, RayParams)
+            -- Sight: needs to be in front of self with an unobstructed line to the target
+            if Distance < SIGHT_RANGE and (Distance < 1 or Offset.Unit:Dot(LookVector) > SIGHT_FOV) then
+                local Raycast = game.Workspace:Raycast(EyePosition, Offset, RayParams)
 
-                    if Raycast and Raycast.Instance:IsDescendantOf(char) and Distance < SeenDistance then
-                        SeenChar     = char
-                        SeenDistance = Distance
-                    end
+                if Raycast and Raycast.Instance:IsDescendantOf(char) and Distance < SeenDistance then
+                    SeenChar     = char
+                    SeenDistance = Distance
                 end
+            end
 
-                -- Noise
-                local Noise  = math.max(char:GetAttribute("Noise") or 0, 3)
-                local Signal = Noise - Distance
+            -- Noise
+            local Noise  = math.max(char:GetAttribute("Noise") or 0, 3)
+            local Signal = Noise - Distance
 
-                if Signal > BestSignal then
-                    BestChar   = char
-                    BestSignal = Signal
-                end
+            if Signal > BestSignal then
+                BestChar   = char
+                BestSignal = Signal
             end
         end
 
@@ -220,6 +271,41 @@ return function(rig : Model)
 
             LastTarget = Target
             LastLevel  = Level
+        end
+    end
+
+    local function clearStalkDetection()
+        for Target in StalkDetectedTargets do
+            DetectService:DetectPlayer(rig, Target, 0)
+        end
+
+        table.clear(StalkDetectedTargets)
+    end
+
+    local function resetAwareness()
+        SensedTarget = nil
+        Awareness = 0
+        HeardTime = 0
+        UnheardTime = 0
+        updateDetection()
+    end
+
+    local function syncStalkDetection(Targets : {Model})
+        local ValidTargets = {}
+
+        for _, Target in Targets do
+            ValidTargets[Target] = true
+            if not StalkDetectedTargets[Target] then
+                DetectService:DetectPlayer(rig, Target, 2)
+                StalkDetectedTargets[Target] = true
+            end
+        end
+
+        for Target in StalkDetectedTargets do
+            if not ValidTargets[Target] then
+                DetectService:DetectPlayer(rig, Target, 0)
+                StalkDetectedTargets[Target] = nil
+            end
         end
     end
 
@@ -258,11 +344,142 @@ return function(rig : Model)
         updateDetection()
     end
 
+    local function getStalkTeleportCFrame(Target : Model) : CFrame?
+        local Origin = Target.PrimaryPart.CFrame.Position
+        local RayParams = RaycastParams.new()
+        RayParams.FilterType = Enum.RaycastFilterType.Exclude
+        RayParams.FilterDescendantsInstances = {rig, Target}
+
+        for _ = 1, STALK_TELEPORT_ATTEMPTS do
+            local Angle = Rand:NextNumber(0, math.pi * 2)
+            local Direction = Vector3.new(math.cos(Angle), 0, math.sin(Angle))
+            local Hit = game.Workspace:Raycast(Origin, Direction * STALK_TELEPORT_RANGE, RayParams)
+            local Distance = Hit and Hit.Distance - STALK_TELEPORT_CLEARANCE or STALK_TELEPORT_RANGE
+
+            if Distance > STALK_TELEPORT_CLEARANCE then
+                local Position = Origin + Direction * Distance
+                return CFrame.lookAt(Position, Vector3.new(Origin.X, Position.Y, Origin.Z))
+            end
+        end
+
+        return nil
+    end
+
+    local function startStalk() : boolean
+        local Targets = getValidTargets()
+        if #Targets == 0 then
+            return false
+        end
+
+        local ChosenTarget = Targets[Rand:NextInteger(1, #Targets)]
+        local TeleportCFrame = getStalkTeleportCFrame(ChosenTarget)
+        if not TeleportCFrame then
+            return false
+        end
+
+        resetAwareness()
+        clearStalkDetection()
+        CurrentState = "STALK"
+        StalkStart = os.clock()
+        StalkTeleportCFrame = TeleportCFrame
+        NextPathRun = 0
+        TimeSinceUpdate = 0
+
+        rig:SetAttribute("Invisible", true)
+        VFXService:GlobalVFX("Invisibility", "Effect", rig.PrimaryPart.CFrame, rig, INVIS_LENGTH, INVIS_STRENGTH)
+
+        LoadedAnims.Cloak:Play()
+        CloakAmbience.Volume = 0
+        syncStalkDetection(Targets)
+
+        return true
+    end
+
+    local function endStalk()
+        clearStalkDetection()
+        StalkStart = 0
+        StalkTeleportCFrame = nil
+
+        rig:SetAttribute("Invisible", false)
+        VFXService:GlobalVFX("Invisibility", "End", rig.PrimaryPart.CFrame, rig)
+        LoadedAnims.Cloak:Stop()
+        PlaySound(9126228629, "End", rig.PrimaryPart, nil, 1, 1)
+        CloakAmbience.Volume = 0
+    end
+
+    local function finishStalk(Target : Model)
+        endStalk()
+        SensedTarget = Target
+        Awareness = CHASE_LEVEL
+        HeardTime = 0
+        UnheardTime = 0
+        CurrentState = "CHASE"
+        NextPathRun = 0
+        TimeSinceUpdate = 0
+        updateDetection()
+
+        local ChasingPlayer = Players:GetPlayerFromCharacter(Target)
+        if ChasingPlayer then
+            VFXService:PlayVFX(ChasingPlayer, "Horror", "Horror", rig.PrimaryPart.CFrame, rig, Awareness)
+        end
+    end
+
+    local function abortStalk()
+        endStalk()
+        resetAwareness()
+        CurrentPatrolCount = 0
+        CurrentPatrolTarget = pickPatrolPoint(PreviousPatrolTarget)
+        PatrolTargetStart = os.clock()
+        CurrentState = "PATROL"
+        NextPathRun = 0
+        TimeSinceUpdate = 0
+
+        rig:PivotTo(CurrentPatrolTarget.CFrame)
+        LastPosition = rig.PrimaryPart.CFrame.Position
+    end
+
+    local function stalk(dt)
+        local TeleportCFrame = StalkTeleportCFrame
+        if TeleportCFrame then
+            if os.clock() - StalkStart < STALK_TELEPORT_DELAY then
+                return
+            end
+
+            StalkTeleportCFrame = nil
+            rig:PivotTo(TeleportCFrame)
+            LastPosition = TeleportCFrame.Position
+            NextPathRun = 0
+        end
+
+        local Targets = getValidTargets()
+        local Target, Distance = getNearestTarget(Targets, rig.PrimaryPart.CFrame.Position)
+
+        if Target and Distance < STALK_REVEAL_DISTANCE then
+            finishStalk(Target)
+            return
+        end
+
+        if not Target or Distance >= STALK_ABORT_DISTANCE or os.clock() - StalkStart >= STALK_DURATION then
+            abortStalk()
+            return
+        end
+
+        TimeSinceUpdate += dt
+        if TimeSinceUpdate >= UPDATE_INTERVAL then
+            syncStalkDetection(Targets)
+            TimeSinceUpdate = 0
+        end
+
+        if os.clock() >= NextPathRun then
+            NextPathRun = os.clock() + UPDATE_INTERVAL
+            Path:Run(Target.PrimaryPart.CFrame.Position)
+        end
+    end
+
     local function patrol(dt)
         if not CurrentPatrolTarget then
            CurrentPatrolTarget = pickPatrolPoint(PreviousPatrolTarget)
            PatrolTargetStart = os.clock()
-           CurrentPatrolCount += 1
         end
 
         TimeSinceUpdate += dt
@@ -270,19 +487,31 @@ return function(rig : Model)
         if os.clock() >= NextPathRun then
             NextPathRun = os.clock() + 1/4
             Path:Run((Awareness < 2 or not isValidTarget(SensedTarget)) and CurrentPatrolTarget.CFrame.Position or SensedTarget.PrimaryPart.CFrame.Position)
+            if CurrentState ~= "PATROL" then
+                return
+            end
 
             -- Choose new target if destination reached; if it cannot be reached within
             -- thirty seconds, move on to the next as if it had been reached
             local Distance = (rig.PrimaryPart.CFrame.Position - CurrentPatrolTarget.CFrame.Position).Magnitude
-            if Distance < 6 or os.clock() - PatrolTargetStart >= PATROL_TIMEOUT then
+            local ReachedPatrolPoint = Distance < 6
+            if ReachedPatrolPoint or os.clock() - PatrolTargetStart >= PATROL_TIMEOUT then
                 PreviousPatrolTarget = CurrentPatrolTarget
                 CurrentPatrolTarget = nil
+                CurrentPatrolCount += 1
 
                 if CurrentPatrolCount >= 3 then
+                    CurrentPatrolCount = 0
+
+                    if ReachedPatrolPoint and RoundService:NodeProgress() >= STALK_NODE_PROGRESS
+                        and Rand:NextNumber() < STALK_CHANCE and startStalk() then
+                        return
+                    end
+
                     CurrentPatrolTarget = pickPatrolPoint(PreviousPatrolTarget)
                     PatrolTargetStart = os.clock()
                     rig:PivotTo(CurrentPatrolTarget.CFrame)
-                    CurrentPatrolCount = 0
+                    LastPosition = rig.PrimaryPart.CFrame.Position
                 end
             end
 
@@ -340,7 +569,7 @@ return function(rig : Model)
                     -- the LookVector, i.e. anywhere in the 180 degree arc in front
                     if Offset.Magnitude < 6 and Offset.Unit:Dot(LookVector) >= 0 then
                         PlaySound(HIT_SOUNDS[math.random(1, #HIT_SOUNDS)], "Hit", char.PrimaryPart, nil, 1, Rand:NextNumber(0.95, 1.05))
-                        CombatService:Damage(rig, char, math.random(20, 25), "PROXY", "DEFAULT", true, char.Torso, {})
+                        CombatService:Damage(rig, char, math.random(20, 25) * Lerp(1, aggroLevel(), 1/2.5), "PROXY", "DEFAULT", true, char.Torso, {})
 
                         if Rand:NextNumber() < 0.05 then
                             EffectService:Add(char, "Bleeding", 30)
@@ -414,8 +643,9 @@ return function(rig : Model)
         if not LoadedAnims.Cloak.IsPlaying then
             PlaySound(9120769331, "Init", rig.PrimaryPart, nil, 1, 1)
             LoadedAnims.Cloak:Play()
-            CloakAmbience.Volume = os.clock() >= NextRetreatExit and 1/2 or 0
         end
+
+        CloakAmbience.Volume = os.clock() >= NextRetreatExit and 1/2 or 0
     end
 
     LoadedAnims.Hold:Play()
@@ -424,16 +654,26 @@ return function(rig : Model)
     rig:PivotTo(pickPatrolPoint().CFrame)
 
     LifeConn = RunService.PreSimulation:Connect(function(dt)
+        local AggroLevel = aggroLevel()
+
         if not rig or not rig.Parent then
+            clearStalkDetection()
             LifeConn:Disconnect()
             return
         end
 
-        Humanoid.WalkSpeed = SPEEDS[CurrentState]
+        if CurrentState == "STALK" then
+            Humanoid.WalkSpeed = SPEEDS.STALK
+        else
+            Humanoid.WalkSpeed = SPEEDS[CurrentState] * Lerp(1, AggroLevel, 1/2)
+        end
+
         if CurrentState == "PATROL" then
             patrol(dt)
         elseif CurrentState == "CHASE" then
             chase(dt)
+        elseif CurrentState == "STALK" then
+            stalk(dt)
         elseif CurrentState == "RETREAT" then
             retreat()
         end
@@ -445,11 +685,12 @@ return function(rig : Model)
         if os.clock() >= NextPositionCheck then
             local MoveAnim = (CurrentState == "CHASE" or CurrentState == "RETREAT") and "Run" or "Walk"
             local OtherAnim = MoveAnim == "Run" and "Walk" or "Run"
+            local MoveThreshold = CurrentState == "STALK" and 0.05 or 1
 
             NextPositionCheck = os.clock() + 1/4
             local DistanceRan = (rig.PrimaryPart.Position - LastPosition).Magnitude
 
-            if DistanceRan > 1 and not Humanoid.FloorMaterial ~= Enum.Material.Air then
+            if DistanceRan > MoveThreshold and not Humanoid.FloorMaterial ~= Enum.Material.Air then
                 if not LoadedAnims[MoveAnim].IsPlaying then
                     LoadedAnims[MoveAnim]:Play()
                     LoadedAnims.Idle:Stop()
@@ -516,18 +757,23 @@ return function(rig : Model)
         local Health = rig:GetAttribute("Health")
         local DamageTaken = math.max(PrevHealth - Health, 0)
         Limit += DamageTaken
+        TotalDamage += DamageTaken
 
         -- Retreats if Limit is high enough
         if (Limit >= MaxLimit or Health == 0) and CurrentState ~= "RETREAT" then
+            if CurrentState == "STALK" then
+                StalkStart = 0
+                StalkTeleportCFrame = nil
+                clearStalkDetection()
+            end
+
             CurrentState = "RETREAT"
             RetreatStart = os.clock()
             MaxLimit += (Limit - MaxLimit) * 4/3
             Limit = 0
             CurrentPatrolCount = 0
             CurrentPatrolTarget = pickPatrolPoint(PreviousPatrolTarget)
-            SensedTarget = nil
-            Awareness = 0
-            updateDetection()
+            resetAwareness()
 
             -- Phases out: invisible and immune to damage until the patrol point is reached
             RigClass.HealthClass.canBeAttacked = false

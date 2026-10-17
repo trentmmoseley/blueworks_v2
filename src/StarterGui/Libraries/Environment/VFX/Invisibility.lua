@@ -107,7 +107,7 @@ local Invisibility       = {
     -- A Strength of math.huge renders the character completely invisible
     ["Effect"]           = {
 
-        ["RENDER_DISTANCE"] = 2 ^ 10,
+        ["RENDER_DISTANCE"] = math.huge,
         ["Function"]        = function(args)
             local Char     = args[1]
             local Length   = args[2]
