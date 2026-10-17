@@ -196,7 +196,7 @@ function InventoryGui.Function()
         DROP_KB = Enum.KeyCode[DataController:Get("Keybinds.Drop.Keyboard")]
 
         UIS.InputBegan:Connect(function(input, gpe)
-            if not gpe and not Player:GetAttribute("isChatting") then
+            if not gpe and not Player:GetAttribute("isChatting") and Character:GetAttribute("isGrabbed") ~= true then
                 if input.KeyCode == DROP_KB then
 				    InvService.ActionRequest:Fire("DROP")
                 else
@@ -223,9 +223,13 @@ function InventoryGui.Function()
             end
         end)
 
-        Character:GetAttributeChangedSignal("isDowned"):Connect(function()
-            TheGui.Enabled = Character:GetAttribute("isDowned") ~= true
-        end)
+        local function updateEnabled()
+            TheGui.Enabled = Character:GetAttribute("isDowned") ~= true and Character:GetAttribute("isGrabbed") ~= true
+        end
+
+        Character:GetAttributeChangedSignal("isDowned"):Connect(updateEnabled)
+        Character:GetAttributeChangedSignal("isGrabbed"):Connect(updateEnabled)
+        updateEnabled()
     end
 end
 

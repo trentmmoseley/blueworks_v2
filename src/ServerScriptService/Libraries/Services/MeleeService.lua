@@ -28,7 +28,7 @@ function MeleeService:KnitInit() : ()
     MeleeRequest:On(function(player : Player, hit : Instance)
         if player.Team ~= game.Teams.Squadmates then return end
         local Character = player.Character or player.CharacterAdded:Wait()
-        if not Character then return end
+        if not Character or Character:GetAttribute("isGrabbed") == true then return end
         local MeleeTool = Character:FindFirstChildOfClass("Tool")
         if not MeleeTool or MeleeTool:GetAttribute("Class") ~= "Melee" then return end
         local ItemInfo = require(S2:FindFirstChild(MeleeTool.Name, true).Configuration.ItemInfo)

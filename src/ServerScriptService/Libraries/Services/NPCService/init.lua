@@ -17,7 +17,8 @@ local NPCService      = Knit.CreateService({
     
     -- Client exposure
     Client = {
-        NPCSpawned = Knit.CreateSignal()
+        NPCSpawned = Knit.CreateSignal(),
+        ProxyGrabInput = Knit.CreateSignal()
     },
 })
 

@@ -43,6 +43,8 @@ function GunService:KnitInit() : ()
 
     -- Aiming
     self.Client.AimToggle:Connect(function(plr : Player, toggle : boolean)
+        if plr.Character and plr.Character:GetAttribute("isGrabbed") == true then return end
+
         -- Only allow aiming while a ranged tool is equipped
         local Gun = plr.Character and plr.Character:FindFirstChildOfClass("Tool")
         if toggle and (not Gun or Gun:GetAttribute("Class") ~= "Ranged") then return end
@@ -59,7 +61,7 @@ function GunService:KnitInit() : ()
     GunRequest:On(function(player : Player, action : string, ...)
         if player.Team ~= game.Teams.Squadmates then return end
         local Character = player.Character or player.CharacterAdded:Wait()
-        if not Character then return end
+        if not Character or Character:GetAttribute("isGrabbed") == true then return end
         local Gun = Character:FindFirstChildOfClass("Tool")
         if not Gun or Gun:GetAttribute("Class") ~= "Ranged" then return end
 
@@ -180,7 +182,7 @@ function GunService:KnitInit() : ()
                     self.GunAnim:Fire(Character, "Reload")
 
                     local reloadSuccess = self.CAS:ChargedAction(Character, "Reload", ItemInfo.ReloadLength, function()
-                        return true
+                        return Character:GetAttribute("isGrabbed") ~= true
                     end)
 
                     Character:SetAttribute("isReloading", false)

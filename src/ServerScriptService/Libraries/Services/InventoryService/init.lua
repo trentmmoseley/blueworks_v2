@@ -312,8 +312,8 @@ function InvService:KnitInit() : ()
                 Compiled = nil
             end
 
-            -- Moves to new slot (forced to 0 while downed or in a checkpoint)
-            local NewSlot = not char:GetAttribute("isDowned") and slot or 0
+            -- Moves to new slot (forced to 0 while downed or grabbed)
+            local NewSlot = not char:GetAttribute("isDowned") and not char:GetAttribute("isGrabbed") and slot or 0
             InvClass.CurrentSlot = math.clamp((NewSlot ~= InvClass.CurrentSlot or override == true) and NewSlot or 0, 0, InvClass.MaxSlots)
             updateInv()
 
@@ -410,6 +410,7 @@ function InvService:KnitInit() : ()
         local ActionRequest = nil
         ActionRequest = self.Client.ActionRequest:Connect(function(player, action, ...)
             if player ~= Player or player.Team ~= game.Teams.Squadmates then return end
+            if char:GetAttribute("isGrabbed") == true then return end
 
             local Info = {...}
 
@@ -469,7 +470,7 @@ function InvService:KnitInit() : ()
 
         -- Collecting item
         self.ItemAdded:Connect(function(p : Player, index : number)
-            if Player and p == Player and (InvClass.CurrentSlot or InvClass.CurrentSlot == index) then
+            if Player and p == Player and char:GetAttribute("isGrabbed") ~= true and (InvClass.CurrentSlot or InvClass.CurrentSlot == index) then
                 swapItem(index, true)
             end
         end)
@@ -477,6 +478,13 @@ function InvService:KnitInit() : ()
         -- Downed
         char:GetAttributeChangedSignal("isDowned"):Connect(function()
             if char:GetAttribute("isDowned") == true then
+                swapItem(0, true)
+            end
+        end)
+
+        -- Grabbed
+        char:GetAttributeChangedSignal("isGrabbed"):Connect(function()
+            if char:GetAttribute("isGrabbed") == true then
                 swapItem(0, true)
             end
         end)

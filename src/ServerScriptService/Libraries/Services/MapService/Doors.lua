@@ -145,6 +145,9 @@ function Doors.Init(map)
 			end)
 			
 			ProxPrompt.Triggered:Connect(function(plrwhotriggered)
+				local Character = plrwhotriggered.Character
+				if Character and Character:GetAttribute("isGrabbed") == true then return end
+
 				if AccessLevel.Value == 1 then
 					-- Logic
 					task.spawn(function()

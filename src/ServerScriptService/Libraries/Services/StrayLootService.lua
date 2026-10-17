@@ -45,6 +45,8 @@ function SLService:KnitInit() : ()
     self.Folder.Parent = RepStorage
 
     self.Client.CollectLoot:Connect(function(player : Player, loot : Vector3Value)
+        if player.Character and player.Character:GetAttribute("isGrabbed") == true then return end
+
         if loot and loot:IsDescendantOf(self.Folder) then
             local CharClass = self.CharacterService:GetCharacterClass(player.Character)
             local CompiledLoot = self.InventoryService:CompileLoot(loot)

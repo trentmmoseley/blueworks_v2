@@ -403,8 +403,14 @@ local function update(dt : number, sway, bobble, recoil) : ()
     local inAir = Character:GetAttribute("inAir")
     local isMoving = Character:GetAttribute("rawInputDetected")
     local MovementType = Character:GetAttribute("MovementType")
+    local Grabbed = Character:GetAttribute("isGrabbed") == true
     local MovementAmplitude = (MMT_SETTINGS[MovementType].Speed / 12)
     local QuarterLerp = LerpByFrame(1/4, dt) 
+
+    if Grabbed then
+        firingGun = false
+        isPointAiming = false
+    end
 
     ThisAimAlpha = Lerp(ThisAimAlpha, (Character:GetAttribute("isAiming") and Character:GetAttribute("isReloading") ~= true) and 1 or 0, QuarterLerp / 2.25 * (_G.CurrentI2 and _G.CurrentI2.LerpSpeed or 1))
     RunDepth = Lerp(RunDepth, (MovementType == "RUN" and isMoving) and -0.75 or 0, QuarterLerp * 0.275)
@@ -413,7 +419,7 @@ local function update(dt : number, sway, bobble, recoil) : ()
 
     -- Updates VM position
     TheVM:PivotTo(Camera.CFrame * (_G.CurrentI2 and (_G.CurrentI2.VMHoldMod or CFrame.new(0, 0, 0)) or CFrame.new(0, 0, 0)) * CFrame.new(0, TrigWave("sin", 0.05, 5, os.clock(), 0, 0) * (1 - ThisAimAlpha) - 0.8 + RunDepth - (EquipDiff * 2), (EquipDiff * 5)) + (Camera.CFrame.LookVector * 0.75))
-    TheVM.Parent = (Player.CameraMode == Enum.CameraMode.LockFirstPerson and Character:GetAttribute("beingBrainwashed") ~= true) and Camera or RepStorage
+    TheVM.Parent = (Player.CameraMode == Enum.CameraMode.LockFirstPerson and Character:GetAttribute("beingBrainwashed") ~= true and not Grabbed) and Camera or RepStorage
     
     if MovementType == "CRAWL" then
         local CamCF = Camera.CFrame

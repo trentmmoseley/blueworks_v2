@@ -54,7 +54,7 @@ local ProxColor      = DEFAULT_COLOR
 -- [[ funcs ]] --
 
 local function toggleVis()
-    local promptVis = CurrentPrompt ~= nil
+    local promptVis = CurrentPrompt ~= nil and Character:GetAttribute("isGrabbed") ~= true
     local TI = TweenInfo.new(1/4, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
 
     for _, part : Frame | TextLabel | UIStroke in Frame:GetDescendants() do
@@ -78,12 +78,16 @@ local function toggleVis()
     local TI2 = TweenInfo.new(isHolding and 1/4 or 1, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
     TweenService:Create(Keybind, TI2, {Position = UDim2.fromScale(isHolding and 0.5 or 0.44, 0.679), BackgroundTransparency = isHolding and 0 or 1}):Play()
     TweenService:Create(Keybind.TextButton, TI2, {TextColor3 = Color3.fromHSV(1, 0, isHolding and 0 or 1)}):Play()
-    TweenService:Create(ActionText, TI, {TextTransparency = (isHolding or not CurrentPrompt) and 1 or 0, TextStrokeTransparency = (isHolding or not CurrentPrompt) and 1 or 1/2}):Play()
-    TweenService:Create(ObjectText, TI, {TextTransparency = (isHolding or not CurrentPrompt) and 1 or 0, TextStrokeTransparency = (isHolding or not CurrentPrompt) and 1 or 1/2}):Play()
+    TweenService:Create(ActionText, TI, {TextTransparency = (isHolding or not promptVis) and 1 or 0, TextStrokeTransparency = (isHolding or not promptVis) and 1 or 1/2}):Play()
+    TweenService:Create(ObjectText, TI, {TextTransparency = (isHolding or not promptVis) and 1 or 0, TextStrokeTransparency = (isHolding or not promptVis) and 1 or 1/2}):Play()
 end
 
 -- Determines if can hold
 local function canHold() : string | boolean
+    if Character:GetAttribute("isGrabbed") == true then
+        return "GRABBED"
+    end
+
     if ItemDisplays:FindFirstChild(CurrentPrompt and CurrentPrompt.Parent.Name or "") then
         return InvRep:CanPickUp(CurrentPrompt.Parent.Name, _G.ClientInv.Items, _G.ClientInv.MaxSlots)
     end
@@ -94,10 +98,20 @@ end
 -- Main function
 function ProxPromptGui.Function()
     local function updateEnabled()
-        TheGui.Enabled = Player.Team ~= game.Teams.Spectators
+        TheGui.Enabled = Player.Team ~= game.Teams.Spectators and Character:GetAttribute("isGrabbed") ~= true
     end
 
     updateEnabled()
+
+    Character:GetAttributeChangedSignal("isGrabbed"):Connect(function()
+        if Character:GetAttribute("isGrabbed") == true and CurrentPrompt and isHolding then
+            CurrentPrompt:InputHoldEnd()
+        end
+
+        isHolding = false
+        updateEnabled()
+        toggleVis()
+    end)
 
     -- Clears old prox. beam
     ProxBeam = game.Workspace:FindFirstChild(PBTemp.Name) or RepStorage:FindFirstChild(PBTemp.Name)
@@ -145,7 +159,7 @@ function ProxPromptGui.Function()
     end)
 
     Frame.TextButton.MouseButton1Click:Connect(function()
-        if CurrentPrompt then
+        if CurrentPrompt and Character:GetAttribute("isGrabbed") ~= true then
             if not isHolding then
                 isHolding = true
                 CurrentPrompt:InputHoldBegin()
@@ -199,10 +213,10 @@ function ProxPromptGui.Function()
         Keybind.UIStroke.Color = ProxColor
         Frame.Underline.BackgroundColor3 = ProxColor
 
-        Highlight.OutlineTransparency = Lerp(Highlight.OutlineTransparency, CurrentPrompt and 0 or 1, QuarterLerp)
+        Highlight.OutlineTransparency = Lerp(Highlight.OutlineTransparency, CurrentPrompt and Character:GetAttribute("isGrabbed") ~= true and 0 or 1, QuarterLerp)
         Highlight.OutlineColor = Highlight.OutlineColor:Lerp(ProxColor, QuarterLerp)
 
-        BeamTP = Lerp(BeamTP, CurrentPrompt and 0 or 1, QuarterLerp)
+        BeamTP = Lerp(BeamTP, CurrentPrompt and Character:GetAttribute("isGrabbed") ~= true and 0 or 1, QuarterLerp)
         Beam.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, ProxColor), ColorSequenceKeypoint.new(1, ProxColor)})
         Beam.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1/2, BeamTP), NumberSequenceKeypoint.new(1, 1)})
 

@@ -102,6 +102,19 @@ function MovementLocal.Function()
             HRP = Character.PrimaryPart
             if not Humanoid or not HRP or Humanoid:GetState() == Enum.HumanoidStateType.Dead then return end
 
+            if Character:GetAttribute("isGrabbed") == true then
+                CurrentVelocity = Vector3.zero
+                MobileInput = Vector2.zero
+                Character:SetAttribute("rawInputDetected", false)
+                Character:SetAttribute("MoveDirection", Vector3.zero)
+                Humanoid.WalkSpeed = 0
+                Humanoid.JumpHeight = 0
+                Humanoid.Jump = false
+                Humanoid:Move(Vector3.zero, false)
+                WindSound.Volume = 0
+                return
+            end
+
             Character:SetAttribute("inAir", Humanoid:GetState() == Enum.HumanoidStateType.Jumping or Humanoid:GetState() == Enum.HumanoidStateType.Freefall)
 
             -- Records input

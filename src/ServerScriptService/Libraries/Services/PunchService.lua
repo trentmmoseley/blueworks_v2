@@ -33,7 +33,7 @@ function PunchService:KnitInit() : ()
     PunchRequest:On(function(player : Player, hit : Instance)
         if player.Team ~= game.Teams.Squadmates then return end
         local Character = player.Character or player.CharacterAdded:Wait()
-        if not Character then return end
+        if not Character or Character:GetAttribute("isGrabbed") == true then return end
 
         -- Distance check to ensure hit was valid
         local Distance = (hit.Position - Character.PrimaryPart.Position).Magnitude

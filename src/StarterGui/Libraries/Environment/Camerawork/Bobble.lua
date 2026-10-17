@@ -135,7 +135,7 @@ function Bobble.Function(dt)
         CameraTilt = CameraTilt:Lerp(CFrame.Angles(
 			math.rad(FDSpring.Position.X) + math.rad(PDSpring.Position.X),
 			math.rad(PDSpring.Position.Y), 
-			math.rad(FDSpring.Position.Z) - math.rad(Direction.X  * 3) - math.rad(Direction.X * 4.5) + math.rad(LastLeanVal and 15 * (LastLeanVal == "L" and 1 or -1) or 0) + math.rad(TrigWave("sin", math.max(Character:GetAttribute("isDowned") and 10 or 0), 30, os.clock(), 0, 0)) + math.rad(HumanoidHealthTilt * 5)) * CFrame.new(LastLeanVal and 1.75 * (LastLeanVal == "L" and -1 or 1) or 0, 0, 0), QuarterLerp / 2)
+			math.rad(FDSpring.Position.Z) - math.rad(Direction.X  * 3) - math.rad(Direction.X * 4.5) + math.rad(LastLeanVal and 15 * (LastLeanVal == "L" and 1 or -1) or 0) + math.rad(TrigWave("sin", math.max(Character:GetAttribute("isDowned") and 10 or 0), 30, os.clock(), 0, 0)) + math.rad(HumanoidHealthTilt * 5) + math.rad(Character:GetAttribute("isGrabbed") == true and -20 or 0)) * CFrame.new(LastLeanVal and 1.75 * (LastLeanVal == "L" and -1 or 1) or 0, 0, 0), QuarterLerp / 2)
 
         if isMoving then
             local BobLevel = TrigWave("sin", MmtInfo["MaxAngle"], MmtInfo["BobB"] * 2, os.clock(), 0, 0) * (inAir and 0 or 1/30)
@@ -162,7 +162,14 @@ function Bobble.Function(dt)
         Humanoid.CameraOffset = Vector3.new(0, -CurrentDepth - CurrentBobble - CurrentJump + 3/8, 0)
 
         -- Camera
-        Camera.CFrame *= CameraTilt
+        if Character:GetAttribute("isGrabbed") == true then
+            local Head = Character:FindFirstChild("Head")
+            if Head then
+                Camera.CFrame = Head.CFrame * CFrame.Angles(0, 0, math.rad(-20))
+            end
+        else
+            Camera.CFrame *= CameraTilt
+        end
 
 		-- Resets values
 		JumpDepth = Lerp(JumpDepth, 0, QuarterLerp / 2)

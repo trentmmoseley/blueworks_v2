@@ -127,8 +127,13 @@ function HealthClass:Start() : ()
         return _G.Knit.GetService("TeamService"):AreTeammates(plr.Character or plr.CharacterAdded:Wait(), self.Rig)
     end
 
+    local function canInteract(plr)
+        local Character = plr.Character
+        return Character ~= nil and Character:GetAttribute("isGrabbed") ~= true
+    end
+
     ProxPrompt.PromptButtonHoldBegan:Connect(function(plrwhotriggered)
-        if isTeammate(plrwhotriggered) then
+        if isTeammate(plrwhotriggered) and canInteract(plrwhotriggered) then
             self.Rig:SetAttribute("beingSaved", true)
         end
     end)
@@ -140,7 +145,7 @@ function HealthClass:Start() : ()
     end)
 
     ProxPrompt.Triggered:Connect(function(plrwhotriggered)
-        if isTeammate(plrwhotriggered) then
+        if isTeammate(plrwhotriggered) and canInteract(plrwhotriggered) then
             self.Rig:SetAttribute("isDowned", false)
             self.Rig:SetAttribute("beingSaved", false)
             self:Set(self.Rig:GetAttribute("MaxHealth"))

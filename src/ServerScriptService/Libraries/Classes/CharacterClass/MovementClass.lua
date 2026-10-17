@@ -90,7 +90,7 @@ function MovementClass:Start()
 
     -- Jump stamina + landing/fall damage
     self.StateChangedConn = self.Humanoid.StateChanged:Connect(function(old, new)
-        if self.Player and new == Enum.HumanoidStateType.Jumping then
+        if self.Player and new == Enum.HumanoidStateType.Jumping and self.Character:GetAttribute("isGrabbed") ~= true then
             self.CharacterClass.StaminaClass:SetStamina(-JUMP_STAMINA_COST, true)
         end
 
@@ -131,6 +131,7 @@ function MovementClass:Step(dt)
     end
 
     local MovementType = self.Character:GetAttribute("MovementType")
+    local Grabbed = self.Character:GetAttribute("isGrabbed") == true
 
     -- Downed
     if self.Character:GetAttribute("isDowned") then
@@ -152,7 +153,7 @@ function MovementClass:Step(dt)
         local CurrentPos = self.Character.PrimaryPart.CFrame.Position
         local Displacement = (CurrentPos - self.PrevPos)
 
-        if self.Player and self.Humanoid.Health > 0 then
+        if self.Player and self.Humanoid.Health > 0 and not Grabbed then
             local Threshold = MmtInfo.Speed * 9/8 * 1/4 * (MovementType == "SLIDE" and 2 or 1)
 
             if Displacement.Magnitude > Threshold then
@@ -166,12 +167,12 @@ function MovementClass:Step(dt)
         end
 
         self.PrevPos = CurrentPos
-        self.Velocity = Displacement
+        self.Velocity = Grabbed and Vector3.zero or Displacement
     end
 
     self.CharacterClass.NoiseClass:SetNoise("Movement", MmtInfo.Noise * self.Velocity.Magnitude * 4 * (not (self.Humanoid:GetState() == Enum.HumanoidStateType.Jumping or self.Humanoid:GetState() == Enum.HumanoidStateType.Freefall) and 1 or 0), false)
 
-    local JumpHeight = DEFAULT_JUMP * (MmtInfo.canJump and 1 or 0)
+    local JumpHeight = Grabbed and 0 or DEFAULT_JUMP * (MmtInfo.canJump and 1 or 0)
     if JumpHeight ~= self._lastJumpHeight then
         self._lastJumpHeight = JumpHeight
         self.Humanoid.JumpHeight = JumpHeight

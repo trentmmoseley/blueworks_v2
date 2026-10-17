@@ -47,6 +47,8 @@ function MovementService:KnitInit() : ()
     MovementRequest:On(function(player, mmt)
         if player.Team ~= game.Teams.Spectators then
             local Character = player.Character or player.CharacterAdded:Wait()
+            if Character:GetAttribute("isGrabbed") == true then return end
+
             local Humanoid = Character:FindFirstChildOfClass("Humanoid")
             local CharClass = CharService:GetCharacterClass(Character)
 
@@ -76,6 +78,8 @@ function MovementService:KnitInit() : ()
     self.Client.LeanUpdate:Connect(function(player, start, dir)
         if player.Team ~= game.Teams.Spectators then
             local Character = player.Character or player.CharacterAdded:Wait()
+            if Character:GetAttribute("isGrabbed") == true then return end
+
             local CharClass = CharService:GetCharacterClass(Character)
 
             if CharClass then

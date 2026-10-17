@@ -9,13 +9,17 @@ local CombatService   = _G.Knit.GetService("CombatService")
 local CommsService    = _G.Knit.GetService("CommsService")
 local DetectService   = _G.Knit.GetService("DetectionService")
 local EffectService   = _G.Knit.GetService("EffectService")
+local NPCService      = _G.Knit.GetService("NPCService")
 local RoundService    = _G.Knit.GetService("RoundService")
+local ScoreService    = _G.Knit.GetService("ScoreService")
 local VFXService      = _G.Knit.GetService("VFXService")
 
 -- Modules and objects
 local Lerp            = require(RepStorage.Modules.Util.Math.Lerp)
 local PlaySound       = require(RepStorage.Modules.Util.PlaySound)
+local ProxyGrabSettings = require(RepStorage.Modules.Data.ProxyGrabSettings)
 local SimplePath      = require(RepStorage.Modules.Util.SimplePath)
+local WeldPiece       = require(RepStorage.Modules.Util.WeldPiece)
 
 -- Vars and consts
 local PATROL_INTERVAL = 3
@@ -43,6 +47,8 @@ local SPEEDS        = {
     PATROL          = 8,
     CHASE           = 21,
     STALK           = 1,
+    GRAB            = 21,
+    CARRY           = 4,
     RETREAT         = 40,
 }
 
@@ -50,8 +56,12 @@ local HEAL_RATES    = {
     PATROL          = 5,
     CHASE           = 0,
     STALK           = 0,
+    GRAB            = 0,
+    CARRY           = 0,
     RETREAT         = 25,
 }
+
+local GRAB_WINDUP = 1/2
 
 local STALK_NODE_PROGRESS       = 0.25
 local STALK_CHANCE              = 1
@@ -97,10 +107,9 @@ local function pickPatrolPoint(currentspawn : Part?) : Part
     return ChosenSpawn
 end
 
--- A target only counts while it is alive and still in the world; corpses and
--- removed rigs must never keep the Proxy's attention
+-- A target only counts while it is alive, still in the world, and not grabbed
 local function isValidTarget(char : Model?) : boolean
-    if not char or not char.Parent or not char.PrimaryPart then
+    if not char or not char.Parent or not char.PrimaryPart or char:GetAttribute("isGrabbed") == true then
         return false
     end
 
@@ -111,10 +120,22 @@ end
 return function(rig : Model)
     -- Vars and consts
     local Awareness = 0 -- 0 = unaware, 1 = sensing, 2 = following, 3 = chase
-    local CurrentPatrolCount = 0
+    local CurrentPatrolCount = 2
     local CurrentPatrolTarget : Part? = pickPatrolPoint()
     local PatrolTargetStart = os.clock() -- when the current patrol target was picked
     local CurrentState = "PATROL"
+    local GrabTarget : Model? = nil
+    local GrabStart = 0
+    local GrabProgress = 0
+    local GrabDrainRate = 0
+    local GrabKey = ""
+    local GrabInputSerial = 0
+    local GrabbedVictim : Model? = nil
+    local GrabWeld : Weld? = nil
+    local GrabVictimTrack : AnimationTrack? = nil
+    local GrabbedCanAttack = true
+    local GrabDiedConn : RBXScriptConnection? = nil
+    local GrabDestroyingConn : RBXScriptConnection? = nil
     local NextAttack = 0
     local NextPathRun = 0
     local NextPositionCheck = 0
@@ -296,7 +317,7 @@ return function(rig : Model)
         for _, Target in Targets do
             ValidTargets[Target] = true
             if not StalkDetectedTargets[Target] then
-                DetectService:DetectPlayer(rig, Target, 2)
+                DetectService:DetectPlayer(rig, Target, 3)
                 StalkDetectedTargets[Target] = true
             end
         end
@@ -395,7 +416,7 @@ return function(rig : Model)
         return true
     end
 
-    local function endStalk()
+    local function endStalk(playEndSound : boolean?)
         clearStalkDetection()
         StalkStart = 0
         StalkTeleportCFrame = nil
@@ -403,8 +424,363 @@ return function(rig : Model)
         rig:SetAttribute("Invisible", false)
         VFXService:GlobalVFX("Invisibility", "End", rig.PrimaryPart.CFrame, rig)
         LoadedAnims.Cloak:Stop()
-        PlaySound(9126228629, "End", rig.PrimaryPart, nil, 1, 1)
+        if playEndSound ~= false then
+            PlaySound(9126228629, "End", rig.PrimaryPart, nil, 1, 1)
+        end
         CloakAmbience.Volume = 0
+    end
+
+    local function setGrabKey(Target : Model)
+        local Keybinds = ProxyGrabSettings.KEYBINDS
+        local Index = Rand:NextInteger(1, #Keybinds)
+
+        if GrabKey ~= "" then
+            repeat
+                Index = Rand:NextInteger(1, #Keybinds)
+            until Keybinds[Index][1].Name ~= GrabKey
+        end
+
+        GrabKey = Keybinds[Index][1].Name
+        Target:SetAttribute("ProxyGrabKey", GrabKey)
+    end
+
+    local function enterRetreat()
+        CurrentState = "RETREAT"
+        RetreatStart = os.clock()
+        NextRetreatExit = os.clock()
+        CurrentPatrolCount = 0
+        CurrentPatrolTarget = pickPatrolPoint(PreviousPatrolTarget)
+        NextPathRun = 0
+        resetAwareness()
+
+        RigClass.HealthClass.canBeAttacked = false
+        rig:SetAttribute("Invisible", true)
+        VFXService:GlobalVFX("Invisibility", "Effect", rig.PrimaryPart.CFrame, rig, INVIS_LENGTH, INVIS_STRENGTH)
+    end
+
+    local function releaseGrab()
+        local Victim = GrabbedVictim
+        if not Victim then
+            return
+        end
+
+        GrabbedVictim = nil
+
+        local Weld = GrabWeld
+        local VictimTrack = GrabVictimTrack
+        local CanAttack = GrabbedCanAttack
+        local DiedConn = GrabDiedConn
+        local DestroyingConn = GrabDestroyingConn
+
+        GrabWeld = nil
+        GrabVictimTrack = nil
+        GrabDiedConn = nil
+        GrabDestroyingConn = nil
+
+        if DiedConn then
+            DiedConn:Disconnect()
+        end
+        if DestroyingConn then
+            DestroyingConn:Disconnect()
+        end
+        if Weld then
+            Weld:Destroy()
+        end
+        if VictimTrack then
+            VictimTrack:Stop()
+            VictimTrack:Destroy()
+        end
+
+        LoadedAnims.Grab:Stop()
+
+        if Victim.Parent then
+            Victim:SetAttribute("isGrabbed", false)
+
+            local VictimClass = CharService:GetCharacterClass(Victim)
+            if VictimClass and VictimClass.HealthClass then
+                VictimClass.HealthClass.canAttack = CanAttack
+            end
+
+            local VictimHumanoid = Victim:FindFirstChildOfClass("Humanoid")
+            if VictimHumanoid then
+                VictimHumanoid.AutoRotate = true
+            end
+        end
+
+        if Victim.PrimaryPart then
+            Victim.PrimaryPart.AssemblyLinearVelocity = Vector3.zero
+            Victim.PrimaryPart.AssemblyAngularVelocity = Vector3.zero
+            pcall(function()
+                Victim.PrimaryPart:SetNetworkOwnershipAuto()
+            end)
+        end
+
+        if rig.PrimaryPart then
+            rig.PrimaryPart.AssemblyLinearVelocity = Vector3.zero
+            rig.PrimaryPart.AssemblyAngularVelocity = Vector3.zero
+            pcall(function()
+                rig.PrimaryPart:SetNetworkOwnershipAuto()
+            end)
+        end
+    end
+
+    local function endCarry()
+        if CurrentState ~= "CARRY" then
+            return
+        end
+
+        releaseGrab()
+        resetAwareness()
+        CurrentPatrolCount = 0
+        CurrentPatrolTarget = pickPatrolPoint(CurrentPatrolTarget or PreviousPatrolTarget)
+        PatrolTargetStart = os.clock()
+        CurrentState = "PATROL"
+        NextPathRun = 0
+        TimeSinceUpdate = 0
+        LastPosition = rig.PrimaryPart and rig.PrimaryPart.CFrame.Position or LastPosition
+    end
+
+    local function resolveGrab(PlayerWon : boolean)
+        local Victim = GrabbedVictim
+        if not Victim then
+            return
+        end
+
+        if PlayerWon then
+            Victim:SetAttribute("ProxyGrabResult", "ESCAPED")
+            releaseGrab()
+            enterRetreat()
+            ScoreService:AwardScore(Victim, 40, "Escaped PNDR-4075", true)
+            return
+        end
+
+        Victim:SetAttribute("ProxyGrabResult", "KILLED")
+        local VictimClass = CharService:GetCharacterClass(Victim)
+        CombatService:Damage(rig, Victim, Victim:GetAttribute("MaxHealth") + 1, "PROXY_2", "DEFAULT", true, nil, nil)
+
+        if VictimClass and VictimClass.HealthClass then
+            VictimClass.HealthClass:InstaKill()
+        else
+            local VictimHumanoid = Victim:FindFirstChildOfClass("Humanoid")
+            if VictimHumanoid then
+                VictimHumanoid.Health = 0
+            end
+        end
+
+        endCarry()
+    end
+
+    local function handleGrabInput(Player : Player, Key : string)
+        local Victim = GrabbedVictim
+        if CurrentState ~= "CARRY" or not Victim or Players:GetPlayerFromCharacter(Victim) ~= Player or type(Key) ~= "string" then
+            return
+        end
+
+        local Result = Victim:GetAttribute("ProxyGrabResult")
+        if Result ~= nil and Result ~= "" then
+            return
+        end
+
+        local ValidKey = false
+        for _, Info in ProxyGrabSettings.KEYBINDS do
+            if Info[1].Name == Key then
+                ValidKey = true
+                break
+            end
+        end
+
+        if not ValidKey then
+            return
+        end
+
+        local Good = Key == GrabKey
+        local Change = Good and (ProxyGrabSettings.GOOD_BONUS * GrabDrainRate / ProxyGrabSettings.DRAIN_RATE) or -ProxyGrabSettings.BAD_PENALTY
+        GrabProgress = math.clamp(GrabProgress + Change, 0, 100)
+
+        setGrabKey(Victim)
+        GrabInputSerial += 1
+        Victim:SetAttribute("ProxyGrabProgress", GrabProgress)
+        Victim:SetAttribute("ProxyGrabFeedback", Good and "Good" or "Bad")
+        Victim:SetAttribute("ProxyGrabInputSerial", GrabInputSerial)
+
+        if GrabProgress >= 100 then
+            resolveGrab(true)
+        elseif GrabProgress <= 0 then
+            resolveGrab(false)
+        end
+    end
+
+    local function startGrab(Target : Model) : boolean
+        if GrabbedVictim or not Players:GetPlayerFromCharacter(Target) or not isValidTarget(Target) then
+            return false
+        end
+
+        local VictimClass = CharService:GetCharacterClass(Target)
+        local VictimHumanoid = Target:FindFirstChildOfClass("Humanoid")
+        local VictimAnimator = VictimHumanoid and VictimHumanoid:FindFirstChildOfClass("Animator")
+        if not VictimClass or not VictimClass.HealthClass or not VictimHumanoid or not VictimAnimator then
+            return false
+        end
+
+        if Path.Status == SimplePath.StatusType.Active then
+            Path:Stop()
+        end
+
+        local GrabPosition = rig.PrimaryPart.CFrame.Position
+        resetAwareness()
+        GrabTarget = nil
+        GrabStart = 0
+        CurrentState = "CARRY"
+        NextPathRun = 0
+        TimeSinceUpdate = 0
+
+        GrabbedVictim = Target
+        GrabbedCanAttack = VictimClass.HealthClass.canAttack
+        VictimClass.HealthClass.canAttack = false
+
+        Target:SetAttribute("isFiring", false)
+        Target:SetAttribute("isAiming", false)
+        Target:SetAttribute("isReloading", false)
+        Target:SetAttribute("isLeaning", false)
+        Target:SetAttribute("MovementType", "WALK")
+
+        GrabProgress = ProxyGrabSettings.INITIAL_PROGRESS
+        GrabDrainRate = ProxyGrabSettings.DRAIN_RATE
+        GrabKey = ""
+        GrabInputSerial = 0
+        Target:SetAttribute("ProxyGrabProgress", GrabProgress)
+        Target:SetAttribute("ProxyGrabFeedback", "")
+        Target:SetAttribute("ProxyGrabInputSerial", GrabInputSerial)
+        Target:SetAttribute("ProxyGrabResult", "")
+        setGrabKey(Target)
+        Target:SetAttribute("isGrabbed", true)
+
+        local GrabbedPlayer = Players:GetPlayerFromCharacter(Target)
+        if GrabbedPlayer then
+            VFXService:PlayVFX(GrabbedPlayer, "Horror", "Horror", rig.PrimaryPart.CFrame, rig, 3, true)
+        end
+
+        for _, Root in {rig.PrimaryPart, Target.PrimaryPart} do
+            Root.AssemblyLinearVelocity = Vector3.zero
+            Root.AssemblyAngularVelocity = Vector3.zero
+            pcall(function()
+                Root:SetNetworkOwner(nil)
+            end)
+        end
+
+        VictimHumanoid.AutoRotate = false
+        Target:PivotTo(rig.PrimaryPart.CFrame * CFrame.new(0, 0, -1.25))
+        GrabWeld = WeldPiece(rig.PrimaryPart, Target.PrimaryPart)
+
+        local VictimAnimation = Instance.new("Animation")
+        VictimAnimation.AnimationId = "rbxassetid://"..ANIM_GRAB_VICTIM
+        local VictimTrack = VictimAnimator:LoadAnimation(VictimAnimation)
+        VictimAnimation:Destroy()
+        VictimTrack.Looped = true
+        VictimTrack.Priority = Enum.AnimationPriority.Action4
+        GrabVictimTrack = VictimTrack
+
+        LoadedAnims.Grab:Play()
+        VictimTrack:Play()
+        PlaySound(9120769331, "Init", nil, GrabPosition, 1, 1)
+        PlaySound(106447205440153, "Grab", nil, GrabPosition, 1, 1)
+
+        GrabDiedConn = VictimHumanoid.Died:Connect(endCarry)
+        GrabDestroyingConn = Target.Destroying:Connect(endCarry)
+
+        local FirstPatrolPoint = pickPatrolPoint(PreviousPatrolTarget)
+        local SecondPatrolPoint = pickPatrolPoint(FirstPatrolPoint)
+        PreviousPatrolTarget = FirstPatrolPoint
+        CurrentPatrolTarget = SecondPatrolPoint
+        PatrolTargetStart = os.clock()
+
+        rig:PivotTo(FirstPatrolPoint.CFrame)
+        LastPosition = rig.PrimaryPart.CFrame.Position
+
+        return true
+    end
+
+    local function beginGrab(Target : Model) : boolean
+        if not Players:GetPlayerFromCharacter(Target) or not isValidTarget(Target) then
+            return false
+        end
+
+        endStalk(false)
+        resetAwareness()
+        GrabTarget = Target
+        GrabStart = os.clock()
+        CurrentState = "GRAB"
+        NextPathRun = 0
+        TimeSinceUpdate = 0
+
+        return true
+    end
+
+    local function grabWindup()
+        local Target = GrabTarget
+        if not Target or not Players:GetPlayerFromCharacter(Target) or not isValidTarget(Target) then
+            GrabTarget = nil
+            GrabStart = 0
+            CurrentState = "PATROL"
+            NextPathRun = 0
+            return
+        end
+
+        if os.clock() - GrabStart >= GRAB_WINDUP then
+            if not startGrab(Target) then
+                GrabTarget = nil
+                GrabStart = 0
+                CurrentState = "PATROL"
+                NextPathRun = 0
+            end
+            return
+        end
+
+        if os.clock() >= NextPathRun then
+            NextPathRun = os.clock() + UPDATE_INTERVAL
+            Path:Run(Target.PrimaryPart.CFrame.Position)
+        end
+    end
+
+    local function carry(dt)
+        local Victim = GrabbedVictim
+        if not Victim or not Victim.Parent then
+            endCarry()
+            return
+        end
+
+        GrabDrainRate += ProxyGrabSettings.DRAIN_ACCELERATION * dt
+        GrabProgress = math.max(0, GrabProgress - GrabDrainRate * dt)
+        Victim:SetAttribute("ProxyGrabProgress", GrabProgress)
+        if GrabProgress <= 0 then
+            resolveGrab(false)
+            return
+        end
+
+        if not CurrentPatrolTarget then
+            return
+        end
+
+        if os.clock() >= NextPathRun then
+            NextPathRun = os.clock() + UPDATE_INTERVAL
+
+            local CarryTarget = CurrentPatrolTarget
+            Path:Run(CarryTarget.CFrame.Position)
+            if CurrentState ~= "CARRY" or CurrentPatrolTarget ~= CarryTarget then
+                return
+            end
+
+            local Distance = (rig.PrimaryPart.CFrame.Position - CarryTarget.CFrame.Position).Magnitude
+            if Distance < 6 or os.clock() - PatrolTargetStart >= PATROL_TIMEOUT then
+                if Path.Status == SimplePath.StatusType.Active then
+                    Path:Stop()
+                end
+
+                Humanoid:MoveTo(rig.PrimaryPart.CFrame.Position)
+                PreviousPatrolTarget = CarryTarget
+                CurrentPatrolTarget = nil
+            end
+        end
     end
 
     local function finishStalk(Target : Model)
@@ -455,7 +831,13 @@ return function(rig : Model)
         local Target, Distance = getNearestTarget(Targets, rig.PrimaryPart.CFrame.Position)
 
         if Target and Distance < STALK_REVEAL_DISTANCE then
-            finishStalk(Target)
+            if Players:GetPlayerFromCharacter(Target) then
+                if not beginGrab(Target) then
+                    finishStalk(Target)
+                end
+            else
+                finishStalk(Target)
+            end
             return
         end
 
@@ -569,7 +951,7 @@ return function(rig : Model)
                     -- the LookVector, i.e. anywhere in the 180 degree arc in front
                     if Offset.Magnitude < 6 and Offset.Unit:Dot(LookVector) >= 0 then
                         PlaySound(HIT_SOUNDS[math.random(1, #HIT_SOUNDS)], "Hit", char.PrimaryPart, nil, 1, Rand:NextNumber(0.95, 1.05))
-                        CombatService:Damage(rig, char, math.random(20, 25) * Lerp(1, aggroLevel(), 1/2.5), "PROXY", "DEFAULT", true, char.Torso, {})
+                        CombatService:Damage(rig, char, math.random(20, 25) * Lerp(1, aggroLevel(), 1/2.5), "PROXY_1", "DEFAULT", true, char.Torso, {})
 
                         if Rand:NextNumber() < 0.05 then
                             EffectService:Add(char, "Bleeding", 30)
@@ -658,12 +1040,13 @@ return function(rig : Model)
 
         if not rig or not rig.Parent then
             clearStalkDetection()
+            releaseGrab()
             LifeConn:Disconnect()
             return
         end
 
-        if CurrentState == "STALK" then
-            Humanoid.WalkSpeed = SPEEDS.STALK
+        if CurrentState == "STALK" or CurrentState == "CARRY" then
+            Humanoid.WalkSpeed = SPEEDS[CurrentState]
         else
             Humanoid.WalkSpeed = SPEEDS[CurrentState] * Lerp(1, AggroLevel, 1/2)
         end
@@ -674,6 +1057,10 @@ return function(rig : Model)
             chase(dt)
         elseif CurrentState == "STALK" then
             stalk(dt)
+        elseif CurrentState == "GRAB" then
+            grabWindup()
+        elseif CurrentState == "CARRY" then
+            carry(dt)
         elseif CurrentState == "RETREAT" then
             retreat()
         end
@@ -682,10 +1069,18 @@ return function(rig : Model)
         RigClass.HealthClass:Increment(dt * HEAL_RATES[CurrentState])
 
         -- Animations
+        if CurrentState == "CARRY" then
+            if LoadedAnims.Hold.IsPlaying then
+                LoadedAnims.Hold:Stop()
+            end
+        elseif not LoadedAnims.Hold.IsPlaying then
+            LoadedAnims.Hold:Play()
+        end
+
         if os.clock() >= NextPositionCheck then
-            local MoveAnim = (CurrentState == "CHASE" or CurrentState == "RETREAT") and "Run" or "Walk"
+            local MoveAnim = (CurrentState == "CHASE" or CurrentState == "GRAB" or CurrentState == "RETREAT") and "Run" or "Walk"
             local OtherAnim = MoveAnim == "Run" and "Walk" or "Run"
-            local MoveThreshold = CurrentState == "STALK" and 0.05 or 1
+            local MoveThreshold = (CurrentState == "STALK" or CurrentState == "CARRY") and 0.05 or 1
 
             NextPositionCheck = os.clock() + 1/4
             local DistanceRan = (rig.PrimaryPart.Position - LastPosition).Magnitude
@@ -742,6 +1137,8 @@ return function(rig : Model)
         end
     end)
 
+    NPCService.Client.ProxyGrabInput:Connect(handleGrabInput)
+
     -- Locks onto attacker whenever attacked
     CombatService.CharacterAttacked:Connect(function(attacker : Model | Player, target)
         if attacker and target == rig and CurrentState == "PATROL" then
@@ -765,6 +1162,11 @@ return function(rig : Model)
                 StalkStart = 0
                 StalkTeleportCFrame = nil
                 clearStalkDetection()
+            elseif CurrentState == "GRAB" then
+                GrabTarget = nil
+                GrabStart = 0
+            elseif CurrentState == "CARRY" then
+                releaseGrab()
             end
 
             CurrentState = "RETREAT"

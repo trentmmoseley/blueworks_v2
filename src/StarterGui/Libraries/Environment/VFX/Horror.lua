@@ -20,6 +20,7 @@ local NextHorror    = 0
 
 local DetectionLevels = {}
 local PendingHorrors  = {}
+local BypassHorrors   = {}
 local PendingConnection : RBXScriptConnection? = nil
 
 -- [[ funcs ]] --
@@ -54,6 +55,10 @@ local function getIntensity(entity : Model) : number
 end
 
 local function isEntityVisible(entity : Model) : boolean
+    if BypassHorrors[entity] == true then
+        return true
+    end
+
     if not entity.PrimaryPart or entity:GetAttribute("Invisible") == true then
         return false
     end
@@ -90,8 +95,10 @@ local function updatePendingHorrors()
         if not entity.Parent or DetectionLevels[entity] ~= 3 then
             PendingHorrors[entity] = nil
             DetectionLevels[entity] = nil
-        elseif isEntityVisible(entity) then
+            BypassHorrors[entity] = nil
+        elseif isEntityVisible(entity) or BypassHorrors[entity] == true then
             PendingHorrors[entity] = nil
+            BypassHorrors[entity] = nil
             playHorror(getIntensity(entity))
         end
     end
@@ -107,6 +114,7 @@ DetectService.DetectionUpdate:Connect(function(_, entity : Model?, level : numbe
     else
         DetectionLevels[entity] = nil
         PendingHorrors[entity] = nil
+        BypassHorrors[entity] = nil
         stopPendingCheckIfDone()
     end
 end)
@@ -119,11 +127,13 @@ local Horror       = {
         ["Function"]        = function(args)
             local Entity = args[1]
             local DetectionLevel = args[2]
+            local bypassLook = args[3]
 
             if os.clock() < NextHorror or DetectionLevel ~= 3 or typeof(Entity) ~= "Instance" or not Entity:IsA("Model") then return end
 
             DetectionLevels[Entity] = DetectionLevel
             PendingHorrors[Entity] = true
+            BypassHorrors[Entity] = bypassLook == true
 
             if not PendingConnection then
                 PendingConnection = RunService.PreRender:Connect(updatePendingHorrors)
