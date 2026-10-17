@@ -125,6 +125,7 @@ return function(rig : Model)
     local PatrolTargetStart = os.clock() -- when the current patrol target was picked
     local CurrentState = "PATROL"
     local GrabTarget : Model? = nil
+    local GrabAttackerValue : ObjectValue? = nil
     local GrabStart = 0
     local GrabProgress = 0
     local GrabDrainRate = 0
@@ -136,6 +137,7 @@ return function(rig : Model)
     local GrabbedCanAttack = true
     local GrabDiedConn : RBXScriptConnection? = nil
     local GrabDestroyingConn : RBXScriptConnection? = nil
+    local FailedGrabs = 0
     local NextAttack = 0
     local NextPathRun = 0
     local NextPositionCheck = 0
@@ -203,7 +205,7 @@ return function(rig : Model)
 
     -- Calculates aggression level
     local function aggroLevel() : number
-        return 1 + (RoundService:NodeProgress() * 0.75) + TotalDamage / 1600
+        return 1 + (RoundService:NodeProgress() * 0.75) + TotalDamage / 1600 + FailedGrabs / 14
     end
 
     local function getValidTargets() : {Model}
@@ -551,8 +553,13 @@ return function(rig : Model)
             releaseGrab()
             enterRetreat()
             ScoreService:AwardScore(Victim, 40, "Escaped PNDR-4075", true)
+            FailedGrabs += 1
             return
         end
+
+        AttackAnims[math.random(1, #AttackAnims)]:Play()
+        PlaySound(ATTACK_SOUNDS[math.random(1, #ATTACK_SOUNDS)], "Attack", rig.PrimaryPart, nil, 1, Rand:NextNumber(0.95, 1.05))
+        PlaySound(HIT_SOUNDS[math.random(1, #HIT_SOUNDS)], "Hit", rig.PrimaryPart, nil, 1, Rand:NextNumber(0.95, 1.05))
 
         Victim:SetAttribute("ProxyGrabResult", "KILLED")
         local VictimClass = CharService:GetCharacterClass(Victim)
@@ -700,6 +707,13 @@ return function(rig : Model)
         return true
     end
 
+    local function clearGrabAttacker()
+        if GrabAttackerValue then
+            GrabAttackerValue:Destroy()
+            GrabAttackerValue = nil
+        end
+    end
+
     local function beginGrab(Target : Model) : boolean
         if not Players:GetPlayerFromCharacter(Target) or not isValidTarget(Target) then
             return false
@@ -713,12 +727,19 @@ return function(rig : Model)
         NextPathRun = 0
         TimeSinceUpdate = 0
 
+        clearGrabAttacker()
+        GrabAttackerValue = Instance.new("ObjectValue")
+        GrabAttackerValue.Name = "ProxyGrabAttacker"
+        GrabAttackerValue.Value = rig
+        GrabAttackerValue.Parent = Target
+
         return true
     end
 
     local function grabWindup()
         local Target = GrabTarget
         if not Target or not Players:GetPlayerFromCharacter(Target) or not isValidTarget(Target) then
+            clearGrabAttacker()
             GrabTarget = nil
             GrabStart = 0
             CurrentState = "PATROL"
@@ -727,6 +748,7 @@ return function(rig : Model)
         end
 
         if os.clock() - GrabStart >= GRAB_WINDUP then
+            clearGrabAttacker()
             if not startGrab(Target) then
                 GrabTarget = nil
                 GrabStart = 0
@@ -749,7 +771,7 @@ return function(rig : Model)
             return
         end
 
-        GrabDrainRate += ProxyGrabSettings.DRAIN_ACCELERATION * dt
+        GrabDrainRate += ProxyGrabSettings.DRAIN_ACCELERATION * dt * Lerp(1, aggroLevel(), 1/4)
         GrabProgress = math.max(0, GrabProgress - GrabDrainRate * dt)
         Victim:SetAttribute("ProxyGrabProgress", GrabProgress)
         if GrabProgress <= 0 then
@@ -882,7 +904,7 @@ return function(rig : Model)
                 CurrentPatrolTarget = nil
                 CurrentPatrolCount += 1
 
-                if CurrentPatrolCount >= 3 then
+                if CurrentPatrolCount >= 1 then
                     CurrentPatrolCount = 0
 
                     if ReachedPatrolPoint and RoundService:NodeProgress() >= STALK_NODE_PROGRESS
@@ -1040,6 +1062,7 @@ return function(rig : Model)
 
         if not rig or not rig.Parent then
             clearStalkDetection()
+            clearGrabAttacker()
             releaseGrab()
             LifeConn:Disconnect()
             return
@@ -1163,6 +1186,7 @@ return function(rig : Model)
                 StalkTeleportCFrame = nil
                 clearStalkDetection()
             elseif CurrentState == "GRAB" then
+                clearGrabAttacker()
                 GrabTarget = nil
                 GrabStart = 0
             elseif CurrentState == "CARRY" then
