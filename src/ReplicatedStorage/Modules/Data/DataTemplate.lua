@@ -46,6 +46,10 @@ local DataTemplate   = {
         }
     },
 
+    Character        = {
+        Gender       = "M", -- M = male, F = female, X = other
+    },
+
     Client           = {
         Blood        = 2, -- 0 = off, 1 = low, 2 = medium, 3 = high, 4 = ultra
         doNoiseVal   = true,

@@ -904,7 +904,7 @@ return function(rig : Model)
                 CurrentPatrolTarget = nil
                 CurrentPatrolCount += 1
 
-                if CurrentPatrolCount >= 1 then
+                if CurrentPatrolCount >= 3 then
                     CurrentPatrolCount = 0
 
                     if ReachedPatrolPoint and RoundService:NodeProgress() >= STALK_NODE_PROGRESS

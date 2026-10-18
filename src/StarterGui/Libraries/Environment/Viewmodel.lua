@@ -397,7 +397,13 @@ end
 
 -- Frame-based update
 local function update(dt : number, sway, bobble, recoil) : ()
-    if not (Character and Character.Parent) then return end
+    if not (Character and Character.Parent) then
+        if TheVM and TheVM.Parent then
+            TheVM:Destroy()
+            TheVM = nil
+        end
+        return 
+    end
 
     -- Vars and consts
     local inAir = Character:GetAttribute("inAir")
@@ -419,7 +425,7 @@ local function update(dt : number, sway, bobble, recoil) : ()
 
     -- Updates VM position
     TheVM:PivotTo(Camera.CFrame * (_G.CurrentI2 and (_G.CurrentI2.VMHoldMod or CFrame.new(0, 0, 0)) or CFrame.new(0, 0, 0)) * CFrame.new(0, TrigWave("sin", 0.05, 5, os.clock(), 0, 0) * (1 - ThisAimAlpha) - 0.8 + RunDepth - (EquipDiff * 2), (EquipDiff * 5)) + (Camera.CFrame.LookVector * 0.75))
-    TheVM.Parent = (Player.CameraMode == Enum.CameraMode.LockFirstPerson and Character:GetAttribute("beingBrainwashed") ~= true and not Grabbed) and Camera or RepStorage
+    TheVM.Parent = (Player.CameraMode == Enum.CameraMode.LockFirstPerson and Character:GetAttribute("beingBrainwashed") ~= true and not Grabbed and Player.Team == game.Teams.Squadmates) and Camera or RepStorage
     
     if MovementType == "CRAWL" then
         local CamCF = Camera.CFrame

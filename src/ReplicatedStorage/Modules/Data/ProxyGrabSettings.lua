@@ -28,8 +28,8 @@ local ProxyGrabSettings = {
     },
 
     INITIAL_PROGRESS = 50,
-    DRAIN_RATE = 12,
-    DRAIN_ACCELERATION = 1.5,
+    DRAIN_RATE = 10,
+    DRAIN_ACCELERATION = 1,
     GOOD_BONUS = 7.5,
     BAD_PENALTY = 5,
 }
