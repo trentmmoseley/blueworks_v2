@@ -42,7 +42,7 @@ function DetectionGui.Function()
         -- Chooses death blurb
         local CauseOfDeath = Corpse and (Character:GetAttribute("CauseOfDeath") or "DEFAULT") or "NO_CORPSE"
         local Blurb = DeathBlurbs.getBlurb(CauseOfDeath) or DeathBlurbs.getBlurb("DEFAULT")
-        Blurb = Blurb:gsub("user_id", tostring(Player.UserId)):gsub("username", Player.DisplayName):gsub("pronoun_possessive", Pronouns[Gender].Possessive)
+        Blurb = Blurb:gsub("user_id", tostring(Player.UserId)):gsub("pronoun_possessive", Pronouns[Gender].Possessive):gsub("pronoun_object", Pronouns[Gender].Object)
 
         -- Death sequence
         if DeathSeqs[CauseOfDeath] then

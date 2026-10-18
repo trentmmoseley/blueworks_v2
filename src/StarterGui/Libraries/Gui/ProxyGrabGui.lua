@@ -149,6 +149,8 @@ local function startGrab()
     PressPrompt.Text = "PRESS"
     TheGui.Enabled = true
     Command.Visible = true
+    ProgressBar.Visible = true
+    Keybind.Visible = true
     updateProgress()
     updateKey()
 end
@@ -164,7 +166,9 @@ local function escapeGrab()
     GrabbedBlurb.TextColor3 = GOOD_COLOR
     GrabbedBlurb.Visible = false
 
+    ProgressBar.Visible = false
     Command.Visible = false
+    Keybind.Visible = false
 
     task.spawn(function()
         for _ = 1, ESCAPE_FLASHES do

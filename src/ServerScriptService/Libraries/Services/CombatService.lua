@@ -40,6 +40,10 @@ function CombatService:Damage(attacker : Model?, target : Model, damage : number
 
     local doesDamage = (not attackerPresent or (not self.TeamService:AreTeammates(attacker, target) and AttackerClass.HealthClass.canAttack)) and TargetClass.HealthClass.canBeAttacked
     if doesDamage then
+        -- Cause of death
+        target:SetAttribute("CauseOfDeath", method)
+        target:SetAttribute("DeathType", deathid)
+
         -- Records attackers
         if attackerPresent then
             if not self.Attackers[TargetID] then
@@ -99,10 +103,6 @@ function CombatService:Damage(attacker : Model?, target : Model, damage : number
         if TargetPlayer and attackerPresent then
             DamagePointer:Fire(TargetPlayer, attacker.PrimaryPart.CFrame.Position)
         end
-
-        -- Cause of death
-        target:SetAttribute("CauseOfDeath", method)
-        target:SetAttribute("DeathType", deathid)
 
         -- Bloodshed
         if shedblood then

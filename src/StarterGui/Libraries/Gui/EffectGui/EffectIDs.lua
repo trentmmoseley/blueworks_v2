@@ -43,5 +43,16 @@ return {
 		},
 		["Positivity"]	  = "Bad",
 	},
+
+	["Stunned"]  = {
+		["Image"]  = 106596381712906,
+		["Colors"] = {
+
+			["Primary"]   = Color3.fromRGB(166, 0, 255),
+			["Secondary"] = Color3.fromRGB(81, 0, 113),
+
+		},
+		["Positivity"]	  = "Bad",
+	}
 	
 }

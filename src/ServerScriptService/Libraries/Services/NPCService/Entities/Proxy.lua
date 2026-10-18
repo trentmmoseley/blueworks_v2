@@ -34,7 +34,9 @@ local ANIMS         = {
     ["Fall"]        = {119528283195927, Enum.AnimationPriority.Action3},
     ["Land"]        = {70926104383734, Enum.AnimationPriority.Action2},
     ["Cloak"]       = {95947585478349, Enum.AnimationPriority.Action4},
-    ["Grab"]        = {88986754999227, Enum.AnimationPriority.Action4}
+    ["Grab"]        = {88986754999227, Enum.AnimationPriority.Action4},
+    ["Charge"]      = {98924964685899, Enum.AnimationPriority.Action4},
+    ["Stunned"]     = {122410086598709, Enum.AnimationPriority.Action4}
 }
 
 local ANIM_GRAB_VICTIM = 121534838798001
@@ -46,6 +48,7 @@ local HIT_SOUNDS    = {18512265986, 18512270266}
 local SPEEDS        = {
     PATROL          = 8,
     CHASE           = 21,
+    CHARGE          = 60,
     STALK           = 1,
     GRAB            = 21,
     CARRY           = 4,
@@ -55,6 +58,7 @@ local SPEEDS        = {
 local HEAL_RATES    = {
     PATROL          = 5,
     CHASE           = 0,
+    CHARGE          = 0,
     STALK           = 0,
     GRAB            = 0,
     CARRY           = 0,
@@ -62,6 +66,12 @@ local HEAL_RATES    = {
 }
 
 local GRAB_WINDUP = 1/2
+
+local CHARGE_NODE_PROGRESS = 3/8
+local CHARGE_MIN_DISTANCE  = 50
+local CHARGE_DURATION      = 7.5
+local CHARGE_INTERVAL      = 25
+local CHARGE_HIT_RADIUS    = 1.25
 
 local STALK_NODE_PROGRESS       = 0.25
 local STALK_CHANCE              = 1
@@ -124,6 +134,7 @@ return function(rig : Model)
     local CurrentPatrolTarget : Part? = pickPatrolPoint()
     local PatrolTargetStart = os.clock() -- when the current patrol target was picked
     local CurrentState = "PATROL"
+    local ChargeStart = 0
     local GrabTarget : Model? = nil
     local GrabAttackerValue : ObjectValue? = nil
     local GrabStart = 0
@@ -139,6 +150,7 @@ return function(rig : Model)
     local GrabDestroyingConn : RBXScriptConnection? = nil
     local FailedGrabs = 0
     local NextAttack = 0
+    local NextCharge = 0
     local NextPathRun = 0
     local NextPositionCheck = 0
     local NextRetreatExit = 0
@@ -163,6 +175,10 @@ return function(rig : Model)
     -- Sets stuff up
     local LifeConn : RBXScriptConnection
     local Path = SimplePath.new(rig)
+
+    local ChargeRayParams = RaycastParams.new()
+    ChargeRayParams.FilterType = Enum.RaycastFilterType.Exclude
+    ChargeRayParams.FilterDescendantsInstances = {rig}
 
     local RigClass = CharService:GetCharacterClass(rig)
     RigClass.HealthClass.humanoidDiesOnZero = false
@@ -200,6 +216,12 @@ return function(rig : Model)
     CloakAmbience.Parent = rig.PrimaryPart
     CloakAmbience.Volume = 0
     CloakAmbience:Play()
+
+    local FlyAmbience = Instance.new("Sound")
+    FlyAmbience.SoundId = "rbxassetid://17537700449"
+    FlyAmbience.Parent = rig.PrimaryPart
+    FlyAmbience.Looped = true
+    FlyAmbience.Volume = 2
 
     -- [[ Main life cycle ]] --
 
@@ -554,6 +576,7 @@ return function(rig : Model)
             enterRetreat()
             ScoreService:AwardScore(Victim, 40, "Escaped PNDR-4075", true)
             FailedGrabs += 1
+            PlaySound(112444846023457, "Escape", rig.PrimaryPart, nil, 1, 1)
             return
         end
 
@@ -935,6 +958,120 @@ return function(rig : Model)
         end
     end
 
+    local function startCharge() : boolean
+        local Origin = rig.PrimaryPart.CFrame.Position
+        local Target, Distance = getNearestTarget(getValidTargets(), Origin)
+        if not Target or Distance < CHARGE_MIN_DISTANCE then
+            return false
+        end
+
+        local Offset = Target.PrimaryPart.CFrame.Position - Origin
+        local Obstruction = game.Workspace:Raycast(Origin, Offset, ChargeRayParams)
+        if Obstruction and not Obstruction.Instance:IsDescendantOf(Target) then
+            return false
+        end
+
+        if Path.Status == SimplePath.StatusType.Active then
+            Path:Stop()
+        end
+
+        ChargeStart = os.clock()
+        NextCharge = ChargeStart + CHARGE_INTERVAL
+        CurrentState = "CHARGE"
+        SensedTarget = Target
+        Awareness = CHASE_LEVEL
+        NextPathRun = 0
+        TimeSinceUpdate = 0
+        updateDetection()
+        LoadedAnims.Charge:Play()
+
+        PlaySound(9125616715, "Whoosh", rig.PrimaryPart, nil, 1, 1)
+        FlyAmbience:Play()
+
+        return true
+    end
+
+    local function endCharge()
+        ChargeStart = 0
+        LoadedAnims.Charge:Stop()
+        FlyAmbience:Stop()
+        Humanoid:MoveTo(rig.PrimaryPart.CFrame.Position)
+        NextPathRun = 0
+        TimeSinceUpdate = 0
+
+        if isValidTarget(SensedTarget) then
+            CurrentState = "CHASE"
+            Awareness = CHASE_LEVEL
+            updateDetection()
+        else
+            CurrentState = "PATROL"
+            resetAwareness()
+        end
+    end
+
+    local function charge(dt)
+        local Targets = getValidTargets()
+        local Target = getNearestTarget(Targets, rig.PrimaryPart.CFrame.Position)
+        if not Target or os.clock() - ChargeStart >= CHARGE_DURATION then
+            endCharge()
+            return
+        end
+
+        SensedTarget = Target
+        Awareness = CHASE_LEVEL
+        updateDetection()
+
+        local RootPosition = rig.PrimaryPart.CFrame.Position
+        local TargetPosition = Target.PrimaryPart.CFrame.Position
+        local Obstruction = game.Workspace:Raycast(RootPosition, TargetPosition - RootPosition, ChargeRayParams)
+        if Obstruction and not Obstruction.Instance:IsDescendantOf(Target) then
+            if os.clock() >= NextPathRun then
+                NextPathRun = os.clock() + UPDATE_INTERVAL
+                Path:Run(TargetPosition)
+                if CurrentState ~= "CHARGE" then
+                    return
+                end
+            end
+        else
+            if Path.Status == SimplePath.StatusType.Active then
+                Path:Stop()
+            end
+            NextPathRun = 0
+            Humanoid:MoveTo(TargetPosition)
+        end
+
+        local MoveDirection = Humanoid.MoveDirection
+        local Direction = MoveDirection.Magnitude > 1/100 and MoveDirection.Unit or rig.PrimaryPart.CFrame.LookVector
+        local CastDistance = math.max(Humanoid.WalkSpeed * dt + CHARGE_HIT_RADIUS, CHARGE_HIT_RADIUS)
+        local Hit = game.Workspace:Spherecast(RootPosition + Vector3.new(0, 0.1, 0), CHARGE_HIT_RADIUS, Direction * CastDistance, ChargeRayParams)
+        if not Hit then
+            return
+        end
+
+        local HitTarget = nil
+        for _, OtherTarget in Targets do
+            if Hit.Instance:IsDescendantOf(OtherTarget) then
+                HitTarget = OtherTarget
+                break
+            end
+        end
+
+        if HitTarget then
+            SensedTarget = HitTarget
+            AttackAnims[math.random(1, #AttackAnims)]:Play()
+            PlaySound(ATTACK_SOUNDS[math.random(1, #ATTACK_SOUNDS)], "Attack", rig.PrimaryPart, nil, 1, Rand:NextNumber(0.95, 1.05))
+            PlaySound(HIT_SOUNDS[math.random(1, #HIT_SOUNDS)], "Hit", HitTarget.PrimaryPart, nil, 1, Rand:NextNumber(0.95, 1.05))
+
+            local HitClass = CharService:GetCharacterClass(HitTarget)
+            local DidDamage = CombatService:Damage(rig, HitTarget, HitTarget:GetAttribute("MaxHealth") + 1, "PROXY_3", "EVISCERATE", true, HitTarget:FindFirstChild("Torso"), nil)
+            if DidDamage and HitClass and HitClass.HealthClass then
+                HitClass.HealthClass:InstaKill()
+            end
+        end
+
+        endCharge()
+    end
+
     local function chase(dt)
         -- Dead or removed targets are dropped immediately so the Proxy reverts to
         -- patrol (or picks up a new living target) instead of attacking the corpse
@@ -948,13 +1085,18 @@ return function(rig : Model)
             return
         end
 
+        local DistanceFromTarget = (SensedTarget.PrimaryPart.CFrame.Position - rig.PrimaryPart.CFrame.Position).Magnitude
+        if DistanceFromTarget >= CHARGE_MIN_DISTANCE and RoundService:NodeProgress() >= CHARGE_NODE_PROGRESS
+            and os.clock() >= NextCharge and startCharge() then
+            return
+        end
+
         if os.clock() >= NextPathRun then
             NextPathRun = os.clock() + 1/4
             Path:Run(SensedTarget.PrimaryPart.CFrame.Position)
         end
 
         -- Attacking
-        local DistanceFromTarget = (SensedTarget.PrimaryPart.CFrame.Position - rig.PrimaryPart.CFrame.Position).Magnitude
         if DistanceFromTarget < 6 and os.clock() >= NextAttack then
             NextAttack = os.clock() + ATTACK_INTERVAL
             AttackAnims[math.random(1, #AttackAnims)]:Play()
@@ -1078,6 +1220,8 @@ return function(rig : Model)
             patrol(dt)
         elseif CurrentState == "CHASE" then
             chase(dt)
+        elseif CurrentState == "CHARGE" then
+            charge(dt)
         elseif CurrentState == "STALK" then
             stalk(dt)
         elseif CurrentState == "GRAB" then
@@ -1092,7 +1236,15 @@ return function(rig : Model)
         RigClass.HealthClass:Increment(dt * HEAL_RATES[CurrentState])
 
         -- Animations
-        if CurrentState == "CARRY" then
+        if CurrentState ~= "CHARGE" and LoadedAnims.Charge.IsPlaying then
+            LoadedAnims.Charge:Stop()
+        end
+
+        if CurrentState == "CHARGE" and not LoadedAnims.Charge.IsPlaying then
+            LoadedAnims.Charge:Play()
+        end
+
+        if CurrentState == "CARRY" or CurrentState == "CHARGE" then
             if LoadedAnims.Hold.IsPlaying then
                 LoadedAnims.Hold:Stop()
             end
@@ -1100,7 +1252,11 @@ return function(rig : Model)
             LoadedAnims.Hold:Play()
         end
 
-        if os.clock() >= NextPositionCheck then
+        if CurrentState == "CHARGE" then
+            LoadedAnims.Walk:Stop()
+            LoadedAnims.Run:Stop()
+            LoadedAnims.Idle:Stop()
+        elseif os.clock() >= NextPositionCheck then
             local MoveAnim = (CurrentState == "CHASE" or CurrentState == "GRAB" or CurrentState == "RETREAT") and "Run" or "Walk"
             local OtherAnim = MoveAnim == "Run" and "Walk" or "Run"
             local MoveThreshold = (CurrentState == "STALK" or CurrentState == "CARRY") and 0.05 or 1
@@ -1191,6 +1347,10 @@ return function(rig : Model)
                 GrabStart = 0
             elseif CurrentState == "CARRY" then
                 releaseGrab()
+            elseif CurrentState == "CHARGE" then
+                ChargeStart = 0
+                LoadedAnims.Charge:Stop()
+                FlyAmbience:Stop()
             end
 
             CurrentState = "RETREAT"
