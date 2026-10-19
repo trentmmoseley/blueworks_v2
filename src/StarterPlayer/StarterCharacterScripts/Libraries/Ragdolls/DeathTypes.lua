@@ -27,8 +27,6 @@ local DeathTypes     = {
             end
         end
 
-        print("works")
-
         -- Slices them off
         for i = 1, #Limbs do
             task.spawn(function()

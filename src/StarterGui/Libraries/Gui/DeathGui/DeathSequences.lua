@@ -27,17 +27,44 @@ local CFPan          = CFrame.Angles(0, 0, 0)
 -- [[ funcs ]] --
 
 local DeathSequences = {
-    DEFAULT          = function(...)
-        for _, sound in PlayerGui.Sounds:GetDescendants() do
-            if sound:IsA("Sound") then
-                if not table.find({"EarRinging", "Heartbeat"}, sound.Name) then
-                    sound:Stop()
-                else
-                    TweenService:Create(sound, TweenInfo.new(10), {Volume = 0}):Play()
-                end
-            end
-        end
+    PROXY_3          = function(...)
+        local DeathCC = Instance.new("ColorCorrectionEffect")
+        DeathCC.Name = "DeathCC"
+        DeathCC.TintColor = Color3.fromHSV(1, 1, 1)
+        DeathCC.Contrast = 11/8
+        DeathCC.Brightness = 0.65
+        DeathCC.Saturation = -0.9
+        DeathCC.Parent = Lighting
 
+        local CamStep = nil
+        local TimeInit = os.clock()
+
+        Lighting.ClockTime = 16
+        Sounds.PROXY_3.Buzzing:Play()
+
+        CamStep = RunService.PreRender:Connect(function(dt)
+            Camera.CFrame = game.Workspace.ChargeJS.CamPart.CFrame
+            if os.clock() >= TimeInit + 2/3 then
+                CamStep:Disconnect()
+                CamStep = nil
+            end
+        end)
+
+        repeat task.wait() until not CamStep
+
+        DeathCC.TintColor = Color3.fromHSV(1, 0, 1)
+        DeathCC.Brightness = 1000
+        DeathCC.Contrast = 0
+        DeathCC.Saturation = 0
+
+        Sounds.PROXY_3.Buzzing:Stop()
+        task.wait(1/20)
+        DeathCC.Brightness = -1
+
+        task.wait(2)
+    end,
+
+    DEFAULT          = function(...)
         Sounds.Death:Play()
         Sounds.Sting:Play()
 

@@ -3,6 +3,7 @@ local DetectionGui   = {}
 -- Services
 local Players        = game:GetService("Players")
 local RepStorage     = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local TweenService   = game:GetService("TweenService")
 
 local DataController = _G.Knit.GetController("DataController")
@@ -22,6 +23,8 @@ local DeathSeqs      = require(script.DeathSequences)
 local Pronouns       = require(RepStorage.Modules.Data.Pronouns)
 local _effects       = require(PlayerGui.Libraries.Gui._EFFECTS)
 
+local Camera         = game.Workspace.CurrentCamera
+
 local MainFrame      = TheGui.MainFrame
 
 local DeathBlurb     = MainFrame.DeathBlurb
@@ -33,6 +36,16 @@ local Gender         = DataController:Get("Character.Gender")
 -- Main function
 function DetectionGui.Function()
     Humanoid.Died:Connect(function()
+        for _, sound in PlayerGui.Sounds:GetDescendants() do
+            if sound:IsA("Sound") then
+                if not table.find({"EarRinging", "Heartbeat"}, sound.Name) then
+                    sound:Stop()
+                else
+                    TweenService:Create(sound, TweenInfo.new(10), {Volume = 0}):Play()
+                end
+            end
+        end
+
         TheGui.Enabled = true
         local Corpse = game.Workspace:WaitForChild("Corpses"):FindFirstChild(Player.Name)
         if Corpse then
@@ -57,6 +70,10 @@ function DetectionGui.Function()
         _effects:CreateBuffer(MainFrame, 3)
         TweenService:Create(MainFrame._static, TweenInfo.new(1), {ImageTransparency = 0.5}):Play()
         PlayerGui.Sounds.Death.TurnOn:Play()
+
+        local RunConn = RunService.PreRender:Connect(function(dt)
+            Camera.CFrame = game.Workspace.DeathPOV.Part.CFrame
+        end)
     end)
 end
 

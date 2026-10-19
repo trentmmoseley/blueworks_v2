@@ -79,7 +79,7 @@ local STALK_DURATION            = 20
 local STALK_REVEAL_DISTANCE     = 6
 local STALK_ABORT_DISTANCE      = 30
 local STALK_TELEPORT_DELAY      = 1/2
-local STALK_TELEPORT_RANGE      = 15
+local STALK_TELEPORT_RANGE      = 7.5
 local STALK_TELEPORT_CLEARANCE  = 2
 local STALK_TELEPORT_ATTEMPTS   = 12
 
@@ -130,7 +130,7 @@ end
 return function(rig : Model)
     -- Vars and consts
     local Awareness = 0 -- 0 = unaware, 1 = sensing, 2 = following, 3 = chase
-    local CurrentPatrolCount = 2
+    local CurrentPatrolCount = 0
     local CurrentPatrolTarget : Part? = pickPatrolPoint()
     local PatrolTargetStart = os.clock() -- when the current patrol target was picked
     local CurrentState = "PATROL"
