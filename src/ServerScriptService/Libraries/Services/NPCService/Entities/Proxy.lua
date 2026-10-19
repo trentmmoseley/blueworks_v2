@@ -72,6 +72,7 @@ local CHARGE_MIN_DISTANCE  = 50
 local CHARGE_DURATION      = 7.5
 local CHARGE_INTERVAL      = 25
 local CHARGE_HIT_RADIUS    = 1.25
+local CHARGE_KILL_DISTANCE = 3
 
 local STALK_NODE_PROGRESS       = 0.25
 local STALK_CHANCE              = 1
@@ -1042,7 +1043,7 @@ return function(rig : Model)
 
         local MoveDirection = Humanoid.MoveDirection
         local Direction = MoveDirection.Magnitude > 1/100 and MoveDirection.Unit or rig.PrimaryPart.CFrame.LookVector
-        local CastDistance = math.max(Humanoid.WalkSpeed * dt + CHARGE_HIT_RADIUS, CHARGE_HIT_RADIUS)
+        local CastDistance = math.min(Humanoid.WalkSpeed * dt + CHARGE_HIT_RADIUS, CHARGE_KILL_DISTANCE)
         local Hit = game.Workspace:Spherecast(RootPosition + Vector3.new(0, 0.1, 0), CHARGE_HIT_RADIUS, Direction * CastDistance, ChargeRayParams)
         if not Hit then
             return
@@ -1057,6 +1058,10 @@ return function(rig : Model)
         end
 
         if HitTarget then
+            if (HitTarget.PrimaryPart.Position - RootPosition).Magnitude >= CHARGE_KILL_DISTANCE then
+                return
+            end
+
             SensedTarget = HitTarget
             AttackAnims[math.random(1, #AttackAnims)]:Play()
             PlaySound(ATTACK_SOUNDS[math.random(1, #ATTACK_SOUNDS)], "Attack", rig.PrimaryPart, nil, 1, Rand:NextNumber(0.95, 1.05))
