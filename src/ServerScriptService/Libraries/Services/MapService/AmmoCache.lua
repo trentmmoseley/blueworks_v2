@@ -16,6 +16,7 @@ local PlaySound    = require(RepStorage.Modules.Util.PlaySound)
 -- Vars and consts
 local AP_SIZES     = {
 
+	["Long"]       = {0.55,  {3, 8}},
 	["Medium"]     = {0.85,  {1, 12}},
 	["Shells"]     = {0.625, {1, 8}},
 	["Short"]      = {1,     {5, 15}},
