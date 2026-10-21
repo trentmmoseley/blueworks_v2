@@ -55,7 +55,7 @@ function Perspective.Function(dt)
     WasGrabbed = Grabbed
 
     if AttackerHead then
-        Camera.CFrame = Camera.CFrame:Lerp(CFrame.lookAt(Camera.CFrame.Position, AttackerHead.CFrame.Position), QuarterLerp)
+        -- Camera.CFrame = Camera.CFrame:Lerp(CFrame.lookAt(Camera.CFrame.Position, AttackerHead.CFrame.Position), QuarterLerp)
     end
 end
 
