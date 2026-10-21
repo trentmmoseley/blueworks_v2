@@ -3,10 +3,11 @@ local DetectionGui   = {}
 -- Services
 local Players        = game:GetService("Players")
 local RepStorage     = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
+local RunService     = game:GetService("RunService")
 local TweenService   = game:GetService("TweenService")
 
 local DataController = _G.Knit.GetController("DataController")
+local ScoreService   = _G.Knit.GetService("ScoreService")
 
 -- Players
 local Player         = Players.LocalPlayer
@@ -66,14 +67,15 @@ function DetectionGui.Function()
 
         DeathBlurb.Text = string.format("\"%s\"", Blurb)
         MainFrame._static.ImageTransparency = 0
+
+        ScoreService:GetScore(Player):andThen(function(val)
+            FinalScore.Text = string.format("Final Score: <b>%i</b>", val)
+        end)
+
         MainFrame.Visible = true
         _effects:CreateBuffer(MainFrame, 3)
         TweenService:Create(MainFrame._static, TweenInfo.new(1), {ImageTransparency = 0.5}):Play()
         PlayerGui.Sounds.Death.TurnOn:Play()
-
-        local RunConn = RunService.PreRender:Connect(function(dt)
-            Camera.CFrame = game.Workspace.DeathPOV.Part.CFrame
-        end)
     end)
 end
 

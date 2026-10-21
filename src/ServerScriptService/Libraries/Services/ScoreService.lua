@@ -6,7 +6,9 @@ local RepStorage      = game:GetService("ReplicatedStorage")
 local Knit            = require(RepStorage.Packages.Knit)
 local ScoreService    = Knit.CreateService({
     Name = "ScoreService",
-    Client = {},
+    Client = {
+        Scores = {},
+    },
 
     Scores = {}
 })
@@ -22,16 +24,32 @@ function ScoreService:AwardScore(char : Model, amount : number, reason : string,
     if notify then
         self.CommsService:SendSubtitle(nil, Player, string.format("%s%i PT%s. (%s)", amount > 0 and "+" or "-", math.abs(math.floor(amount)), math.abs(amount) ~= 1 and "S" or "", reason), Color3.fromHSV(1, amount > 0 and 0 or 1, 1))
     end
+
+    self.Client.Scores[Player.UserId] = self.Scores[Player.UserId]
 end
 
 -- Manages player
 function ScoreService:ManagePlayer(player : Player)
     self.Scores[player.UserId] = {}
+    self.Client.Scores[player.UserId] = {}
 end
 
 -- Resets player
 function ScoreService:ResetPlayer(player : Player)
     self.Scores[player.UserId] = {}
+    self.Client.Scores[player.UserId] = {}
+end
+
+-- Gets score of player
+function ScoreService.Client:GetScore(player : Player) : number
+    if self.Scores[player.UserId] then
+        local Sum = 0
+        for _, amount in self.Scores[player.UserId] do
+            Sum += amount
+        end
+        return Sum
+    end
+    return 0
 end
 
 -- On knit init
