@@ -6,7 +6,8 @@ local Knit            = require(RepStorage.Packages.Knit)
 local CheckpointService = Knit.CreateService({
     Name = "CheckpointService",
     Client = {},
-    Codes = {}
+    Codes = {},
+    Nodes = {},
 })
 
 CheckpointService.TestSignal = _G.Signal.new()
@@ -29,11 +30,21 @@ end
 -- Registers code for Node to store
 function CheckpointService:RegisterCode() : number
     local Number = math.random(0, 999999)
-    while self:CheckForCode(Number) do
-        Number = math.random(0, 999999)
-    end
     table.insert(self.Codes, Number)
     return Number
+end
+
+-- Registers Node
+function CheckpointService:RegisterNode(node : Model) : ()
+    -- Tracks checkpoint via ID
+    local ID = math.random(1, 9999999)
+    node:SetAttribute("ID", ID)
+    CheckpointService.Nodes[ID] = {Model = node}
+end
+
+-- Deregisters Node
+function CheckpointService:DeregisterNode(id : number) : ()
+    CheckpointService.Nodes[id] = nil
 end
 
 -- On knit init completion

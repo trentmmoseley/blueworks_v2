@@ -1069,6 +1069,7 @@ return function(rig : Model)
 
             local HitClass = CharService:GetCharacterClass(HitTarget)
             local DidDamage = CombatService:Damage(rig, HitTarget, HitTarget:GetAttribute("MaxHealth") + 1, "PROXY_3", "EVISCERATE", true, HitTarget:FindFirstChild("Torso"), nil)
+            CombatService:Knockback(HitTarget, rig.PrimaryPart.CFrame.LookVector, 10000)
             if DidDamage and HitClass and HitClass.HealthClass then
                 HitClass.HealthClass:InstaKill()
             end

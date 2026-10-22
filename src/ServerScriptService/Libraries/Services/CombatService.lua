@@ -23,6 +23,21 @@ CombatService.CharacterAttacked = _G.Signal.new()
 
 -- [[ funcs ]] --
 
+-- Knockback
+function CombatService:Knockback(char : Model, vec : Vector3, force : number)
+    local Att0 = Instance.new("Attachment")
+	Att0.Parent = char.PrimaryPart
+
+	local LV = Instance.new("VectorForce")
+	LV.Attachment0 = Att0
+	LV.Force = vec * force
+	LV.RelativeTo = Enum.ActuatorRelativeTo.World
+	LV.Parent = char.PrimaryPart
+
+	game:GetService("Debris"):AddItem(LV, 1/30)
+	game:GetService("Debris"):AddItem(Att0, 1/30)
+end
+
 -- Damages entity
 function CombatService:Damage(attacker : Model?, target : Model, damage : number, method : string, deathid : string, shedblood : boolean, hitpart : BasePart, otherhitparts : {}?) : boolean
     local attackerPresent = attacker ~= nil

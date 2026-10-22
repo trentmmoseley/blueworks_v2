@@ -3,12 +3,16 @@ local Nodes        = {}
 -- Services
 local RepStorage   = game:GetService("ReplicatedStorage")
 local S2           = game:GetService("ServerStorage")
+local TweenService = game:GetService("TweenService")
 
 local CheckpointS  = _G.Knit.GetService("CheckpointService")
 
 -- Modules and objects
 local Lerp         = require(RepStorage.Modules.Util.Math.Lerp)
+local PlaySound    = require(RepStorage.Modules.Util.PlaySound)
 local Progress     = require(RepStorage.Modules.Util.Math.Progress)
+
+local Puzzles      = S2.Game:WaitForChild("Puzzles")
 
 -- Vars and consts
 local MIN_NODES    = 2
@@ -42,6 +46,37 @@ local function setupNode(nodespawn : Part, NodesFolder : Folder, isCheckpoint : 
 	if isCoded == true then
 		Node:SetAttribute("Code", CheckpointS:RegisterCode())
 	end
+
+	CheckpointS:RegisterNode(Node)
+
+	local hasOpened = false
+
+	-- Welds all parts parented to Hinge part of Door model
+	for _, part : BasePart in Node:WaitForChild("Door"):GetDescendants() do
+		if part:IsA("BasePart") and part ~= Node.Door.Hinge then
+			part.Anchored = false
+			local Weld = Instance.new("WeldConstraint")
+			Weld.Part0 = Node.Door.Hinge
+			Weld.Part1 = part
+			Weld.Parent = Node.Door.Hinge
+		end
+	end
+
+	Node.StatusScreen.SurfaceGui.TextLabel.Text = isCheckpoint and "ENTER CODE" or "SET ALL TO GREEN"
+
+	Node.ProximityPrompt.Triggered:Connect(function()
+		if hasOpened then return end
+		hasOpened = true
+		TweenService:Create(Node.Door.Hinge, TweenInfo.new(1), {CFrame = Node.Door.Hinge.CFrame * CFrame.Angles(0, math.rad(-135), 0)}):Play()
+		PlaySound(107243281689304, "Door", nil, Node.Door.Hinge.Position, 1, math.random(0.95, 1.05))
+	end)
+
+	-- Puzzle
+	local puzzle  = Puzzles[isCheckpoint and "_checkpoint" or "_switch"]:Clone()
+	puzzle.Name   = "_puzzle"
+	puzzle:SetAttribute("PuzzleType", puzzle.Name)
+	puzzle.Parent = Node
+	puzzle:PivotTo(Node:WaitForChild("PuzzlePart").CFrame)
 end
 
 -- Main function
@@ -74,7 +109,7 @@ function Nodes.Init(map)
 		local isBlockedOff = not isCheckpoint and (i % 2) + 1 == 2
 		local isCoded = not (isBlockedOff or isCheckpoint) and CodedNodes < CodeCount
 
-		if isCoded then
+		if not isCheckpoint then
 			CodedNodes += 1
 		end
 
@@ -99,8 +134,8 @@ function Nodes.Init(map)
 		NodesLeft.Name = "NodesLeft"
 		NodesLeft.Parent = RepStorage.GameValues.Numbers
 	end
-	NodesLeft.Value = NodeCount
-	NodesLeft:SetAttribute("Init", NodeCount)
+	NodesLeft.Value = CodedNodes
+	NodesLeft:SetAttribute("Init", CodedNodes)
 end
 
 return Nodes
