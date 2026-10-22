@@ -4,6 +4,8 @@ local Nodes        = {}
 local RepStorage   = game:GetService("ReplicatedStorage")
 local S2           = game:GetService("ServerStorage")
 
+local CheckpointS  = _G.Knit.GetService("CheckpointService")
+
 -- Modules and objects
 local Lerp         = require(RepStorage.Modules.Util.Math.Lerp)
 local Progress     = require(RepStorage.Modules.Util.Math.Progress)
@@ -19,7 +21,7 @@ local MAX_SQUAD    = 16
 -- [[ funcs ]] --
 
 -- Node set-up
-local function setupNode(nodespawn : Part, NodesFolder : Folder)
+local function setupNode(nodespawn : Part, NodesFolder : Folder, isCheckpoint : boolean, isBlocked : boolean, isCoded : boolean)
 	local Node = S2.Game.Nodes.Node:Clone()
 	Node.Parent = NodesFolder
 	Node:PivotTo(nodespawn.CFrame)
@@ -29,6 +31,16 @@ local function setupNode(nodespawn : Part, NodesFolder : Folder)
 			part.Anchored = true
 			part.CanCollide = false
 		end
+	end
+
+	-- Defines role
+	Node.Name = (not isCheckpoint and "Node" or "Checkpoint")..(isBlocked and "2" or "1")
+	if isCheckpoint == true then
+		Node.Door.Screen.BrickColor = BrickColor.new("Bright blue")
+	end
+
+	if isCoded == true then
+		Node:SetAttribute("Code", CheckpointS:RegisterCode())
 	end
 end
 
@@ -44,14 +56,33 @@ function Nodes.Init(map)
 	-- Node count scales with squad size
 	local SquadCount = #game.Teams.Squadmates:GetPlayers()
 	local NodeCount = math.ceil(Lerp(MIN_NODES, MAX_NODES, math.clamp(Progress(SquadCount, MIN_SQUAD, MAX_SQUAD), 0, 1))) + EXTRA_NODES
+	local CodeCount = math.round(Lerp(1, 3, math.clamp(Progress(SquadCount, MIN_SQUAD, MAX_SQUAD), 0, 1)))
+
+	local CodedNodes = 0
 
 	-- Manages nodes; a fixed number of spawns are chosen each round
 	local Spawns = map.Spawns.Structures.Nodes:GetChildren()
+	local CompiledSpawns = {{}, {}} -- free kiosks, blocked-off kiosks
+	for _, sp in Spawns do
+		table.insert(CompiledSpawns[sp:GetAttribute("blockedOff") == true and 2 or 1], sp)
+	end
+
 	NodeCount = math.min(NodeCount, #Spawns)
 
 	for i = 1, NodeCount do
-		local ChosenSpawn = Spawns[math.random(1, #Spawns)]
-		setupNode(ChosenSpawn, NodesFolder)
+		local isCheckpoint = i < 3
+		local isBlockedOff = not isCheckpoint and (i % 2) + 1 == 2
+		local isCoded = not (isBlockedOff or isCheckpoint) and CodedNodes < CodeCount
+
+		if isCoded then
+			CodedNodes += 1
+		end
+
+		local ChosenTable = CompiledSpawns[isBlockedOff and 2 or 1]
+		local ChosenSpawn = ChosenTable[math.random(1, #ChosenTable)]
+
+		setupNode(ChosenSpawn, NodesFolder, isCheckpoint, isBlockedOff, isCoded)
+		table.remove(ChosenTable, table.find(ChosenTable, ChosenSpawn))
 		table.remove(Spawns, table.find(Spawns, ChosenSpawn))
 		ChosenSpawn:Destroy()
 	end
