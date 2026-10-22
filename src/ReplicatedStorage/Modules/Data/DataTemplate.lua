@@ -43,6 +43,10 @@ local DataTemplate   = {
         -- Misc.
         Drop         = {
             Keyboard = "X",
+        },
+        Flashlight   = {
+            Keyboard = "F",
+            Gamepad  = "DPadDown",
         }
     },
 
