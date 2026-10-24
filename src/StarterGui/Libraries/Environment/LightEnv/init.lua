@@ -21,12 +21,14 @@ local LEInfo	 = require(script.LEInfo)
 local Lerp       = require(RepStorage.Modules.Util.Math.Lerp)
 local Progress   = require(RepStorage.Modules.Util.Math.Progress)
 
+local Atmosphere = RepStorage.VFX.AtmosphericParts
+
 local Camera     = game.Workspace.CurrentCamera
 local Sounds     = PlayerGui.Sounds.Environment
 
 -- Vars and consts
-local OUTDOOR_AMBIENT = Color3.fromRGB(40, 40, 58)
-local INDOOR_AMBIENT  = Color3.fromRGB(19, 19, 33)
+local OUTDOOR_AMBIENT = Color3.fromRGB(59, 59, 84)
+local INDOOR_AMBIENT  = Color3.fromRGB(30, 30, 45)
 
 local isOutside       = false
 
@@ -43,6 +45,28 @@ local function updateAmbience()
     isOutside = not ((TheRay and TheRay.Instance and (TheRay.Instance.Transparency < 0.5 or TheRay.Instance:FindFirstAncestor("Platform")) and (TheRay.Instance.CanCollide == true and (not string.find(TheRay.Instance.Name, "_playcicadas")) or TheRay.Instance:FindFirstAncestor("Doors"))))
 
     EnvSounds.AmbienceOutdoor.Volume = isOutside and 1/8 or 0
+    EnvSounds.AmbienceIndoor.Volume = not isOutside and 1/8 or 0
+
+    -- Finds atmospheric particles if they already exist
+	local TheseParticles = game.Workspace:FindFirstChild(Atmosphere.Name)
+	if not TheseParticles then
+		TheseParticles = Atmosphere:Clone()
+		TheseParticles.Parent = game.Workspace
+	end
+
+    -- Atmospheric particles
+	local ParticleOrigin = Camera.CFrame
+
+    TheseParticles.Dust.ParticleEmitter.Enabled = not isOutside
+    for _, part in pairs(TheseParticles:GetChildren()) do
+        part.Position = ParticleOrigin.Position
+    end
+
+    for _, pr in pairs(TheseParticles.Rain:GetChildren()) do
+        pr.Enabled = false
+    end
+    
+    TheseParticles.Snow.ParticleEmitter.Enabled = false
 end
 
 -- Updates lighting
@@ -61,7 +85,7 @@ function LightEnv.Function()
     task.spawn(function()
         while true do
             updateAmbience()
-            task.wait(1/4)
+            task.wait(1/2)
         end
     end)
 end

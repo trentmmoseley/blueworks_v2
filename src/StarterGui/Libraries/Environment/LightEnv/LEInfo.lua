@@ -6,5 +6,8 @@ return {
         NIGHT = {
             ClockTime = 19, 20.5
         }
+    },
+    Weather   = {
+        
     }
 }
