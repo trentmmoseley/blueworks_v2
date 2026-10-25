@@ -65,7 +65,7 @@ function StaminaBar.Function()
 
     task.defer(function()
         while true do
-            TheGui.Enabled = (os.clock() * 6 % 1 >= 0.5) or not isCrit
+            TheGui.Enabled = ((os.clock() * 6 % 1 >= 0.5) or not isCrit) and Player.Team ~= game.Teams.Spectators
             task.wait()
         end
     end)

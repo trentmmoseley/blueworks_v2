@@ -314,6 +314,7 @@ end
 
 local function punch()
     if Character:GetAttribute("isDowned") == true then return end
+    if (Character:GetAttribute("NodeID") or 0) > 0 then return end
     local ChosenAnim = PunchTracks[math.random(1, #PunchTracks)]
     ChosenAnim:Play()
     PlaySound(121616358851209, "Swing", Camera, nil, 1, Rand:NextNumber(0.95, 1.05))

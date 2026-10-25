@@ -218,10 +218,10 @@ function ProxPromptGui.Function()
         Keybind.UIStroke.Color = ProxColor
         Frame.Underline.BackgroundColor3 = ProxColor
 
-        Highlight.OutlineTransparency = Lerp(Highlight.OutlineTransparency, CurrentPrompt and Character:GetAttribute("isGrabbed") ~= true and 0 or 1, QuarterLerp)
+        Highlight.OutlineTransparency = Lerp(Highlight.OutlineTransparency, CurrentPrompt and Character:GetAttribute("isGrabbed") ~= true and (Character:GetAttribute("NodeID") or 0) == 0 and 0 or 1, QuarterLerp)
         Highlight.OutlineColor = Highlight.OutlineColor:Lerp(ProxColor, QuarterLerp)
 
-        BeamTP = Lerp(BeamTP, CurrentPrompt and Character:GetAttribute("isGrabbed") ~= true and 0 or 1, QuarterLerp)
+        BeamTP = Lerp(BeamTP, CurrentPrompt and Character:GetAttribute("isGrabbed") ~= true and (Character:GetAttribute("NodeID") or 0) == 0 and 0 or 1, QuarterLerp)
         Beam.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, ProxColor), ColorSequenceKeypoint.new(1, ProxColor)})
         Beam.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1/2, BeamTP), NumberSequenceKeypoint.new(1, 1)})
 

@@ -16,6 +16,8 @@ local CheckpointService = Knit.CreateService({
 local PlaySound         = require(RepStorage.Modules.Util.PlaySound)
 local PluralString      = require(RepStorage.Modules.Util.PluralString)
 
+local NodeAnn           = require(RepStorage.Remotes.NodeAnnouncement):Server()
+
 local GameValues        = RepStorage.GameValues
 
 -- Vars and consts
@@ -246,7 +248,7 @@ function CheckpointService:WireButtons(node : Model, ID : number) : ()
                     self.CommsService:GlobalSubtitle("All Nodes calibrated", "Green")
                     self.S3:GlobalSound("GlobalAnn")
                 else
-                    self.CommsService:GlobalSubtitle(string.format("%i %s %s", NodesLeft.Value, PluralString(NodesLeft.Value, "Node", "Nodes"), PluralString(NodesLeft.Value, "remains", "remain")), "White")
+                    NodeAnn:FireAll()
                 end
             end
         end)

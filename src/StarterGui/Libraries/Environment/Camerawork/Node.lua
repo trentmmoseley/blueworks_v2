@@ -17,6 +17,19 @@ local LerpByFrame       = require(RepStorage.Modules.Util.Math.LerpByFrame)
 
 -- [[ funcs ]] --
 
+-- Hides or restores the character's holstered item displays
+local function setHolstersHidden(char : Model, hidden : boolean) : ()
+    local Torso = char and char:FindFirstChild("Torso")
+    local HolsterSystem = Torso and Torso:FindFirstChild("HolsterSystem")
+    if not HolsterSystem then return end
+
+    for _, part in HolsterSystem:GetDescendants() do
+        if part:IsA("BasePart") then
+            part.LocalTransparencyModifier = hidden and 1 or 0
+        end
+    end
+end
+
 -- Getting node by ID
 local function getNode(id : number) : Model?
     local Playspace = game.Workspace:FindFirstChild("Playspace")
@@ -39,6 +52,7 @@ function NodeCam.Function(dt)
             Node = getNode(NodeID)
             if not Node then return end
             Camera.CameraType = Enum.CameraType.Scriptable
+            setHolstersHidden(Character, true)
         end
 
         Camera.CFrame = Camera.CFrame:Lerp((Node.PrimaryPart.CFrame + Node.PrimaryPart.CFrame.LookVector * 4) * CFrame.Angles(0, math.pi, 0), QuarterLerp)
@@ -46,6 +60,7 @@ function NodeCam.Function(dt)
     else
         if Node then
             Camera.CameraType = Enum.CameraType.Custom
+            setHolstersHidden(Character, false)
             Node = nil
         end
     end
