@@ -312,8 +312,8 @@ function InvService:KnitInit() : ()
                 Compiled = nil
             end
 
-            -- Moves to new slot (forced to 0 while downed or grabbed)
-            local NewSlot = not char:GetAttribute("isDowned") and not char:GetAttribute("isGrabbed") and slot or 0
+            -- Moves to new slot (forced to 0 while downed, grabbed, or seated at a node)
+            local NewSlot = not char:GetAttribute("isDowned") and not char:GetAttribute("isGrabbed") and (char:GetAttribute("NodeID") or 0) == 0 and slot or 0
             InvClass.CurrentSlot = math.clamp((NewSlot ~= InvClass.CurrentSlot or override == true) and NewSlot or 0, 0, InvClass.MaxSlots)
             updateInv()
 
@@ -411,6 +411,7 @@ function InvService:KnitInit() : ()
         ActionRequest = self.Client.ActionRequest:Connect(function(player, action, ...)
             if player ~= Player or player.Team ~= game.Teams.Squadmates then return end
             if char:GetAttribute("isGrabbed") == true then return end
+            if (char:GetAttribute("NodeID") or 0) ~= 0 then return end
 
             local Info = {...}
 
@@ -492,6 +493,13 @@ function InvService:KnitInit() : ()
         -- Brainwashed
         char:GetAttributeChangedSignal("beingBrainwashed"):Connect(function()
             if char:GetAttribute("beingBrainwashed") == true then
+                swapItem(0, true)
+            end
+        end)
+
+        -- Seated at a node
+        char:GetAttributeChangedSignal("NodeID"):Connect(function()
+            if (char:GetAttribute("NodeID") or 0) ~= 0 then
                 swapItem(0, true)
             end
         end)

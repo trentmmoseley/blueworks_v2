@@ -425,7 +425,7 @@ local function update(dt : number, sway, bobble, recoil) : ()
 
     -- Updates VM position
     TheVM:PivotTo(Camera.CFrame * (_G.CurrentI2 and (_G.CurrentI2.VMHoldMod or CFrame.new(0, 0, 0)) or CFrame.new(0, 0, 0)) * CFrame.new(0, TrigWave("sin", 0.05, 5, os.clock(), 0, 0) * (1 - ThisAimAlpha) - 0.8 + RunDepth - (EquipDiff * 2), (EquipDiff * 5)) + (Camera.CFrame.LookVector * 0.75))
-    TheVM.Parent = (Player.CameraMode == Enum.CameraMode.LockFirstPerson and Character:GetAttribute("beingBrainwashed") ~= true and not Grabbed and Player.Team == game.Teams.Squadmates) and Camera or RepStorage
+    TheVM.Parent = (Player.CameraMode == Enum.CameraMode.LockFirstPerson and Character:GetAttribute("beingBrainwashed") ~= true and not Grabbed and Player.Team == game.Teams.Squadmates and (Character:GetAttribute("NodeID") or 0) == 0) and Camera or RepStorage
     
     if MovementType == "CRAWL" then
         local CamCF = Camera.CFrame

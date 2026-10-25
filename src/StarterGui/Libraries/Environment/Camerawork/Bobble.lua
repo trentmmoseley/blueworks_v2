@@ -108,7 +108,7 @@ function Bobble.Function(dt)
     local QuarterLerp = LerpByFrame(1/4,dt)
 
     -- Runs only if player is in-game
-    if Player.Team ~= game.Teams.Spectators then
+    if Player.Team ~= game.Teams.Spectators and (Character:GetAttribute("NodeID") or 0) == 0 then
         local MovementType = Character:GetAttribute("MovementType")
         local inAir = Character:GetAttribute("inAir")
         local isMoving = Character:GetAttribute("rawInputDetected")

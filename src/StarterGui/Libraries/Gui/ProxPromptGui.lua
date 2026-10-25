@@ -98,7 +98,7 @@ end
 -- Main function
 function ProxPromptGui.Function()
     local function updateEnabled()
-        TheGui.Enabled = Player.Team ~= game.Teams.Spectators and Character:GetAttribute("isGrabbed") ~= true
+        TheGui.Enabled = Player.Team ~= game.Teams.Spectators and Character:GetAttribute("isGrabbed") ~= true and (Character:GetAttribute("NodeID") or 0) == 0
     end
 
     updateEnabled()
@@ -109,6 +109,11 @@ function ProxPromptGui.Function()
         end
 
         isHolding = false
+        updateEnabled()
+        toggleVis()
+    end)
+
+    Character:GetAttributeChangedSignal("NodeID"):Connect(function()
         updateEnabled()
         toggleVis()
     end)

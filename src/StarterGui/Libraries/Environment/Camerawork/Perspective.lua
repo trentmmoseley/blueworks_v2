@@ -46,6 +46,14 @@ function Perspective.Function(dt)
     local Attacker = GrabAttacker and GrabAttacker:IsA("ObjectValue") and GrabAttacker.Value or nil
     local AttackerHead = Attacker and Attacker:FindFirstChild("Head")
 
+    -- While seated at a node the Node camera module owns the camera; Classic mode frees the mouse for puzzle buttons
+    local Seated = (Character:GetAttribute("NodeID") or 0) > 0
+    if Seated then
+        Player.CameraMode = Enum.CameraMode.Classic
+        WasGrabbed = Grabbed
+        return
+    end
+
     if not Grabbed and (WasGrabbed or Camera.CameraType == Enum.CameraType.Scriptable) then
         restoreCamera()
     else

@@ -224,11 +224,12 @@ function InventoryGui.Function()
         end)
 
         local function updateEnabled()
-            TheGui.Enabled = Character:GetAttribute("isDowned") ~= true and Character:GetAttribute("isGrabbed") ~= true
+            TheGui.Enabled = Character:GetAttribute("isDowned") ~= true and Character:GetAttribute("isGrabbed") ~= true and (Character:GetAttribute("NodeID") or 0) == 0
         end
 
         Character:GetAttributeChangedSignal("isDowned"):Connect(updateEnabled)
         Character:GetAttributeChangedSignal("isGrabbed"):Connect(updateEnabled)
+        Character:GetAttributeChangedSignal("NodeID"):Connect(updateEnabled)
         updateEnabled()
     end
 end

@@ -70,7 +70,8 @@ local FrameCount = 0
 local LastFPSUpdate = 0
 
 RunService.RenderStepped:Connect(function(dt)
-	Mouse.Icon = "rbxassetid://68308747"
+	local Character = Player.Character
+	Mouse.Icon = not (Character and (Character:GetAttribute("NodeID") or 0) > 0) and "rbxassetid://68308747" or ""
 	FrameCount += 1
 
 	if os.clock() >= LastFPSUpdate + 1/2 then

@@ -17,6 +17,7 @@ local HitboxClass      = require(script.HitboxClass)
 local InvClass         = require(script.InventoryClass)
 local LeanClass        = require(script.LeanClass)
 local MovementClass    = require(script.MovementClass)
+local NodeClass        = require(script.NodeClass)
 local NoiseClass       = require(script.NoiseClass)
 local ScoreClass       = require(script.ScoreClass)
 local StamClass        = require(script.StaminaClass)
@@ -42,6 +43,7 @@ function CharacterClass.new(character : Model) : {}
         InvClass.new(Self),
         LeanClass.new(Self),
         MovementClass.new(Self),
+        NodeClass.new(Self),
         NoiseClass.new(Self),
         ScoreClass.new(Self),
         StamClass.new(Self),

@@ -101,7 +101,7 @@ local function OnToolUnequipped(tool)
 end
 
 local function UpdateGuiEnabled()
-    TheGui.Enabled = Player.Team == game.Teams.Squadmates
+    TheGui.Enabled = Player.Team == game.Teams.Squadmates and (Character:GetAttribute("NodeID") or 0) == 0
 end
 
 -- [[ funcs ]] --
@@ -110,6 +110,7 @@ end
 function GunStats.Function()
     UpdateGuiEnabled()
     Player:GetPropertyChangedSignal("Team"):Connect(UpdateGuiEnabled)
+    Character:GetAttributeChangedSignal("NodeID"):Connect(UpdateGuiEnabled)
 
     Character.ChildAdded:Connect(OnToolEquipped)
     Character.ChildRemoved:Connect(OnToolUnequipped)

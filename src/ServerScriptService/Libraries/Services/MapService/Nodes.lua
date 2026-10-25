@@ -3,13 +3,11 @@ local Nodes        = {}
 -- Services
 local RepStorage   = game:GetService("ReplicatedStorage")
 local S2           = game:GetService("ServerStorage")
-local TweenService = game:GetService("TweenService")
 
 local CheckpointS  = _G.Knit.GetService("CheckpointService")
 
 -- Modules and objects
 local Lerp         = require(RepStorage.Modules.Util.Math.Lerp)
-local PlaySound    = require(RepStorage.Modules.Util.PlaySound)
 local Progress     = require(RepStorage.Modules.Util.Math.Progress)
 
 local Puzzles      = S2.Game:WaitForChild("Puzzles")
@@ -47,36 +45,17 @@ local function setupNode(nodespawn : Part, NodesFolder : Folder, isCheckpoint : 
 		Node:SetAttribute("Code", CheckpointS:RegisterCode())
 	end
 
-	CheckpointS:RegisterNode(Node)
-
-	local hasOpened = false
-
-	-- Welds all parts parented to Hinge part of Door model
-	for _, part : BasePart in Node:WaitForChild("Door"):GetDescendants() do
-		if part:IsA("BasePart") and part ~= Node.Door.Hinge then
-			part.Anchored = false
-			local Weld = Instance.new("WeldConstraint")
-			Weld.Part0 = Node.Door.Hinge
-			Weld.Part1 = part
-			Weld.Parent = Node.Door.Hinge
-		end
-	end
-
-	Node.StatusScreen.SurfaceGui.TextLabel.Text = isCheckpoint and "ENTER CODE" or "SET ALL TO GREEN"
-
-	Node.ProximityPrompt.Triggered:Connect(function()
-		if hasOpened then return end
-		hasOpened = true
-		TweenService:Create(Node.Door.Hinge, TweenInfo.new(1), {CFrame = Node.Door.Hinge.CFrame * CFrame.Angles(0, math.rad(-135), 0)}):Play()
-		PlaySound(107243281689304, "Door", nil, Node.Door.Hinge.Position, 1, math.random(0.95, 1.05))
-	end)
+	-- Per-node seed consumed by CheckpointService for the puzzle's input/solution
+	Node:SetAttribute("PuzzleSeed", Random.new():NextInteger(1, 999999999))
 
 	-- Puzzle
-	local puzzle  = Puzzles[isCheckpoint and "_checkpoint" or "_switch"]:Clone()
+	local puzzle  = Puzzles[isCheckpoint and "_checkpoint" or "_puzzle"]:Clone()
 	puzzle.Name   = "_puzzle"
-	puzzle:SetAttribute("PuzzleType", puzzle.Name)
+	puzzle:SetAttribute("PuzzleType", isCheckpoint and "_checkpoint" or "_puzzle")
 	puzzle.Parent = Node
 	puzzle:PivotTo(Node:WaitForChild("PuzzlePart").CFrame)
+
+	CheckpointS:RegisterNode(Node)
 end
 
 -- Main function
@@ -93,7 +72,7 @@ function Nodes.Init(map)
 	local NodeCount = math.ceil(Lerp(MIN_NODES, MAX_NODES, math.clamp(Progress(SquadCount, MIN_SQUAD, MAX_SQUAD), 0, 1))) + EXTRA_NODES
 	local CodeCount = math.round(Lerp(1, 3, math.clamp(Progress(SquadCount, MIN_SQUAD, MAX_SQUAD), 0, 1)))
 
-	local CodedNodes = 0
+	local PuzzleNodes = 0
 
 	-- Manages nodes; a fixed number of spawns are chosen each round
 	local Spawns = map.Spawns.Structures.Nodes:GetChildren()
@@ -107,10 +86,10 @@ function Nodes.Init(map)
 	for i = 1, NodeCount do
 		local isCheckpoint = i < 3
 		local isBlockedOff = not isCheckpoint and (i % 2) + 1 == 2
-		local isCoded = not (isBlockedOff or isCheckpoint) and CodedNodes < CodeCount
+		local isCoded = not (isBlockedOff or isCheckpoint) and PuzzleNodes < CodeCount
 
 		if not isCheckpoint then
-			CodedNodes += 1
+			PuzzleNodes += 1
 		end
 
 		local ChosenTable = CompiledSpawns[isBlockedOff and 2 or 1]
@@ -134,8 +113,8 @@ function Nodes.Init(map)
 		NodesLeft.Name = "NodesLeft"
 		NodesLeft.Parent = RepStorage.GameValues.Numbers
 	end
-	NodesLeft.Value = CodedNodes
-	NodesLeft:SetAttribute("Init", CodedNodes)
+	NodesLeft.Value = PuzzleNodes
+	NodesLeft:SetAttribute("Init", PuzzleNodes)
 end
 
 return Nodes
