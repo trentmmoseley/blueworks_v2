@@ -73,6 +73,7 @@ function Nodes.Init(map)
 	local CodeCount = math.round(Lerp(1, 3, math.clamp(Progress(SquadCount, MIN_SQUAD, MAX_SQUAD), 0, 1)))
 
 	local PuzzleNodes = 0
+	local CodedNodes = 0
 
 	-- Manages nodes; a fixed number of spawns are chosen each round
 	local Spawns = map.Spawns.Structures.Nodes:GetChildren()
@@ -86,10 +87,14 @@ function Nodes.Init(map)
 	for i = 1, NodeCount do
 		local isCheckpoint = i < 3
 		local isBlockedOff = not isCheckpoint and (i % 2) + 1 == 2
-		local isCoded = not (isBlockedOff or isCheckpoint) and PuzzleNodes < CodeCount
+		local isCoded = not (isBlockedOff or isCheckpoint) and CodedNodes < CodeCount
 
 		if not isCheckpoint then
 			PuzzleNodes += 1
+		end
+
+		if isCoded then
+			CodedNodes += 1
 		end
 
 		local ChosenTable = CompiledSpawns[isBlockedOff and 2 or 1]

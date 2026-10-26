@@ -13,9 +13,9 @@ function Bleeding.onUpdate(charclass, dt)
     charclass.HealthClass:Damage(dt, true)
 
     local shedsBlood = math.random(0, 2000) == 0
-    local PrimaryPart = charclass.Rig.PrimaryPart
+    local PrimaryPart = charclass.Character.PrimaryPart
     if shedsBlood and PrimaryPart then
-        VFXService:GlobalVFX("Blood", "Blood", PrimaryPart.CFrame, PrimaryPart.CFrame, math.random(5, 22), charclass.Rig.Name)
+        VFXService:GlobalVFX("Blood", "Blood", PrimaryPart.CFrame, PrimaryPart.CFrame, math.random(5, 22), charclass.Character.Name)
     end
 end
 

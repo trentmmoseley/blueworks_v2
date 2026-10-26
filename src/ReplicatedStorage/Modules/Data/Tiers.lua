@@ -15,10 +15,12 @@ local Tiers = {
         {
             Name = "II",
             Color = Color3.fromRGB(0, 0, 255),
+            Chance = 7.5,
         },
         {
             Name = "III",
             Color = Color3.fromRGB(100, 0, 255),
+            Chance = 3,
         },
         {
             Name = "IV",

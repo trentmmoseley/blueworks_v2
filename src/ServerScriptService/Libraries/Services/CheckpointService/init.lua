@@ -75,6 +75,19 @@ function CheckpointService:RegisterCode() : number
     return Number
 end
 
+-- Deregisters code
+function CheckpointService:DeregisterCode(id : number) : ()
+    local Code = table.find(self.Codes, id)
+    if Code then
+        table.remove(self.Codes, table.find(self.Codes, id))
+    end
+end
+
+-- Counts codes
+function CheckpointService:CountCodes() : number
+    return #self.Codes
+end
+
 -- Deregisters Node
 function CheckpointService:DeregisterNode(id : number) : ()
     self.Nodes[id] = nil
@@ -180,6 +193,12 @@ function CheckpointService:WireButtons(node : Model, ID : number) : ()
     local Buttons = node._puzzle:FindFirstChild("Buttons")
     if not (Data and Data.Input and Buttons) then return end
 
+    -- Puzzle modules may wire their own buttons (e.g. the checkpoint keypad)
+    if Data.Module and Data.Module.WireButtons then
+        Data.Module.WireButtons(node, Data, ID)
+        return
+    end
+
     for _, button : Model in Buttons:GetChildren() do
         local Index      = tonumber(string.sub(button.Name, #button.Name))
         local ButtonPart = button:FindFirstChild("Button")
@@ -230,7 +249,6 @@ function CheckpointService:WireButtons(node : Model, ID : number) : ()
                 self:DisableNode(node)
 
                 -- Reverses door tween
-                TweenService:Create(node.Door.Hinge, TweenInfo.new(1), {CFrame = node.Door.Hinge.CFrame * CFrame.Angles(0, math.rad(135), 0)}):Play()
                 PlaySound(127997181362733, "Beep", nil, node.Door.Hinge.Position, 1, 1)
                 PlaySound(9116742681, "Door", nil, node.Door.Hinge.Position, 1, math.random(0.95, 1.05))
 
@@ -249,6 +267,21 @@ function CheckpointService:WireButtons(node : Model, ID : number) : ()
                     self.S3:GlobalSound("GlobalAnn")
                 else
                     NodeAnn:FireAll()
+                end
+
+                -- Displays code if applicable
+                local Code = node:GetAttribute("Code")
+                if Code then
+                    task.defer(function()
+                        while node and node:FindFirstAncestor("Workspace") do
+                            node.StatusScreen.SurfaceGui.TextLabel.Text = Code
+                            task.wait(3/4)
+                            node.StatusScreen.SurfaceGui.TextLabel.Text = ""
+                            task.wait(1/4)
+                        end
+                    end)
+                else
+                    TweenService:Create(node.Door.Hinge, TweenInfo.new(1), {CFrame = node.Door.Hinge.CFrame * CFrame.Angles(0, math.rad(135), 0)}):Play()
                 end
             end
         end)

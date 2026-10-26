@@ -15,9 +15,9 @@ function AB.onUpdate(charclass, dt)
     charclass.HealthClass:Damage(TrigWave("sin", 1/2, 6, os.clock(), 0, 1/2) ^ 10 / 50, true)
 
     local shedsBlood = math.random(0, 1000) == 0
-    local PrimaryPart = charclass.Rig.PrimaryPart
+    local PrimaryPart = charclass.Character.PrimaryPart
     if shedsBlood and PrimaryPart then
-        VFXService:GlobalVFX("Blood", "Blood", PrimaryPart.CFrame, PrimaryPart.CFrame, math.random(5, 22), charclass.Rig.Name)
+        VFXService:GlobalVFX("Blood", "Blood", PrimaryPart.CFrame, PrimaryPart.CFrame, math.random(5, 22), charclass.Character.Name)
     end
 end
 
