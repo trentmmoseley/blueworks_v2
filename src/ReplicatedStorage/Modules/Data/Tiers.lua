@@ -1,3 +1,5 @@
+local Rand  = Random.new()
+
 local Tiers = {
     ["Tiers"] = {
         {
@@ -30,7 +32,7 @@ local Tiers = {
 }
 
 -- Chooses random Tier
-function Tiers.getRandomTier(min : number?, max : number?, r : Random)
+function Tiers.getRandomTier(min : number?, max : number?)
     assert(max >= min, "Maxmmum value must be greater than minimum!")
 
     -- Compiles rarities
@@ -43,7 +45,7 @@ function Tiers.getRandomTier(min : number?, max : number?, r : Random)
 	end
 
     -- Generates random number to compare rarities with
-	local RandNumber = r:NextNumber(0, Weight)
+	local RandNumber = Rand:NextNumber(0, Weight)
 	Weight = 0
 
     -- Chooses Prestige based on random number

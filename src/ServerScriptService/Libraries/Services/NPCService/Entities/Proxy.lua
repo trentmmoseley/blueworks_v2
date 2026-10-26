@@ -1158,7 +1158,7 @@ return function(rig : Model)
                         end
 
                         if Rand:NextNumber() < 0.025 then
-                            EffectService:Add(char, "Arterial Bleeding", 30)
+                            EffectService:Add(char, "Arterial Bleeding", 99999)
                         end
                     end
                 end

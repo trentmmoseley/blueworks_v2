@@ -176,7 +176,11 @@ function Glass.Init(map)
 			table.insert(Textures, NewTexture)
 		end
 
+		local Shattered = false
+
 		Durability.Changed:Connect(function(new)
+			if Shattered then return end
+
 			PlaySound(7140152893, "GlassCrack", part, nil, 1, Lerp(0.8, 1.2, new / StartingDurability))
 
 			for _, texture in pairs(Textures) do
@@ -188,6 +192,8 @@ function Glass.Init(map)
 			end
 
 			if new <= 0 then
+				Shattered = true
+
 				part.CanCollide = false
 				part.CanQuery = false
 				part.CanTouch = false

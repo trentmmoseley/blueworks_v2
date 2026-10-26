@@ -234,7 +234,10 @@ function GunService:KnitInit() : ()
                     _G.Knit.GetService("VFXService"):GlobalVFX("BulletHole", "BulletHole", info.Position, info.Position, info.Normal, info.HitInstance)
                 end
             else
-                info.HitInstance.Durability.Value -= Info.Damage
+                local Durability = info.HitInstance:FindFirstChild("Durability")
+                if Durability and Durability.Value > 0 then
+                    Durability.Value -= Info.Damage
+                end
             end
         end
 
