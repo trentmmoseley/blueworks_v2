@@ -224,6 +224,36 @@ return function(rig : Model)
     FlyAmbience.Looped = true
     FlyAmbience.Volume = 2
 
+    -- Grows appendages as Nodes are calibrated; each client works out which ones are owed
+    local NodesLeft = RepStorage.GameValues.Numbers.NodesLeft
+    local GrowthConn = NodesLeft.Changed:Connect(function()
+        if rig.Parent and rig.PrimaryPart then
+            VFXService:GlobalVFX("ProxyEffects", "Grow", rig.PrimaryPart.CFrame, rig)
+        end
+    end)
+
+    -- Catches clients up if the Proxy spawns after growth thresholds were crossed
+    if rig.PrimaryPart and RoundService:NodeProgress() > 0 then
+        VFXService:GlobalVFX("ProxyEffects", "Grow", rig.PrimaryPart.CFrame, rig)
+    end
+
+    -- Replays the growth stage for players who join after thresholds were crossed
+    local JoinConn = Players.PlayerAdded:Connect(function(player)
+        if RoundService:NodeProgress() < 1/4 then
+            return
+        end
+
+        -- The client's VFX handler connects right after its Device attribute is set
+        if not player:GetAttribute("Device") then
+            player:GetAttributeChangedSignal("Device"):Wait()
+        end
+        task.wait(2)
+
+        if rig.Parent and rig.PrimaryPart then
+            VFXService:PlayVFX(player, "ProxyEffects", "Grow", rig.PrimaryPart.CFrame, rig)
+        end
+    end)
+
     -- [[ Main life cycle ]] --
 
     -- Calculates aggression level
@@ -1212,6 +1242,8 @@ return function(rig : Model)
             clearStalkDetection()
             clearGrabAttacker()
             releaseGrab()
+            GrowthConn:Disconnect()
+            JoinConn:Disconnect()
             LifeConn:Disconnect()
             return
         end
