@@ -47,6 +47,10 @@ local DataTemplate   = {
         Flashlight   = {
             Keyboard = "F",
             Gamepad  = "DPadDown",
+        },
+        NightVision  = {
+            Keyboard = "N",
+            Gamepad  = "DPadDown",
         }
     },
 

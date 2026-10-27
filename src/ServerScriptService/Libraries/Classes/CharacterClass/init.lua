@@ -19,6 +19,7 @@ local LeanClass        = require(script.LeanClass)
 local MovementClass    = require(script.MovementClass)
 local NodeClass        = require(script.NodeClass)
 local NoiseClass       = require(script.NoiseClass)
+local NVClass          = require(script.NightVisionClass)
 local ScoreClass       = require(script.ScoreClass)
 local StamClass        = require(script.StaminaClass)
 local TeamClass        = require(script.TeamClass)
@@ -45,6 +46,7 @@ function CharacterClass.new(character : Model) : {}
         MovementClass.new(Self),
         NodeClass.new(Self),
         NoiseClass.new(Self),
+        NVClass.new(Self),
         ScoreClass.new(Self),
         StamClass.new(Self),
         TeamClass.new(Self),

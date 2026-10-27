@@ -12,6 +12,7 @@ _tpClass.__index      = _tpClass
 function _tpClass.new(charclass : {}) : {}
     local Self = setmetatable({}, _tpClass)
     Self.CharacterClass = charclass
+    Self.Character = charclass.Character
 
     Self.ClassName = "_tpClass"
     Self.Classes = {}
