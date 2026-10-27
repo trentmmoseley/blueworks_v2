@@ -83,25 +83,43 @@ function CheckpointKeypad.WireButtons(node : Model, data : {Input : string}, ID 
 
                     -- Deregisters code if valid
                     if codeValid then
-                        CheckpointS:DeregisterCode(Input)
+                        task.defer(function()
+                            CheckpointS:DeregisterCode(Input)
                         
-                        -- Unlocks map if all codes entered
-                        local CodesLeft = CheckpointS:CountCodes()
-                        if CodesLeft == 0 then
-                            _G.Knit.GetService("StraySoundService"):GlobalSound("GlobalAnn")
-                            if GameValues.Numbers.TimeLeft.Value > 45 then
-                                for i = 45, 1, -1 do
-                                    if COUNTDOWN_BLURBS[i] then
-                                        CommsService:GlobalSubtitle(string.format(COUNTDOWN_BLURBS[i], i), Color3.fromRGB(0, 255, 0), true)
-                                    end
-                                    task.wait(1)
-                                end
-                            end
+                            -- Unlocks map if all codes entered
+                            local CodesLeft = CheckpointS:CountCodes()
+                            if CodesLeft == 0 then
+                                local openMap = true
 
-                            CommsService:GlobalSubtitle("Remainder of map unlocked", Color3.fromRGB(0, 255, 0), true)
-                        else
-                            CommsService:GlobalSubtitle("%i code%s remain%s", CodesLeft, CodesLeft > 1 and "s" or "", CodesLeft > 1 and "" or "s", Color3.fromRGB(100, 255, 100), true)
-                        end
+                                if GameValues.Numbers.TimeLeft.Value > 45 then
+                                    _G.Knit.GetService("StraySoundService"):GlobalSound("GlobalAnn")
+                                    for i = 45, 1, -1 do
+                                        if COUNTDOWN_BLURBS[i] then
+                                            CommsService:GlobalSubtitle(string.format(COUNTDOWN_BLURBS[i], i), Color3.fromRGB(0, 255, 0), true)
+                                        end
+
+                                        if not GameValues.Bools.inGame.Value then
+                                            openMap = false
+                                        end
+
+                                        if not openMap then
+                                            break
+                                        end
+
+                                        task.wait(1)
+                                    end
+                                end
+
+                                if openMap then
+                                    CommsService:GlobalSubtitle("Remainder of map unlocked", Color3.fromRGB(0, 255, 0), true)
+                                    _G.Knit.GetService("StraySoundService"):GlobalSound("GlobalAnn")
+                                    _G.Knit.GetService("StraySoundService"):GlobalSound("MapUnlocked")
+                                    GameValues.Bools.mapUnlocked.Value = true
+                                end
+                            else
+                                CommsService:GlobalSubtitle("%i code%s remain%s", CodesLeft, CodesLeft > 1 and "s" or "", CodesLeft > 1 and "" or "s", Color3.fromRGB(100, 255, 100), true)
+                            end
+                        end)
                     end
 
                     for i = 1, 3 do

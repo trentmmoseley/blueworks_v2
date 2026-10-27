@@ -92,6 +92,10 @@ local function canHold() : string | boolean
         return InvRep:CanPickUp(CurrentPrompt.Parent.Name, _G.ClientInv.Items, _G.ClientInv.MaxSlots)
     end
 
+    if CurrentPrompt and CurrentPrompt.Parent and CurrentPrompt:FindFirstAncestor("Doors") and CurrentPrompt.Parent.Configuration.AccessLevel.Value == 3 and not RepStorage.GameValues.Bools.mapUnlocked.Value then
+        return "ON LOCKDOWN"
+    end
+
     return true
 end
 

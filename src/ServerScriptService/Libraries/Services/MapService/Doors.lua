@@ -6,6 +6,10 @@ local S3		   = game:GetService("ServerScriptService")
 local TweenService = game:GetService("TweenService")
 
 local CommsService = _G.Knit.GetService("CommsService")
+local VFXService   = _G.Knit.GetService("VFXService")
+
+-- Modules and objects
+local GameValues   = RepStorage.GameValues
 
 -- Vars and consts
 local DOOR_MSGS	   = {
@@ -197,6 +201,18 @@ function Doors.Init(map)
 					end)
 					task.wait(0.5)
 					onEntityTryCooldown = false
+				end
+			end)
+
+			-- Unlocking once codes entered
+			GameValues.Bools.mapUnlocked.Changed:Connect(function(new)
+				if new and AccessLevel.Value == 3 then
+					AccessLevel.Value = 1
+					for _, plr in game.Teams.Squadmates:GetPlayers() do
+						if plr:GetAttribute("inGame") == true then
+							VFXService:PlayVFX(plr, "Pointer", "Pointer", door.PrimaryPart.CFrame, door, Color3.fromRGB(0, 255, 0), 15)
+						end
+					end
 				end
 			end)
 		else

@@ -19,7 +19,7 @@ local Tiers        = require(RepStorage.Modules.Data.Tiers)
 
 
 -- Vars and consts
-local SPAWN_CHANCE = 22.5 -- chance a cache spawn is chosen
+local SPAWN_CHANCE = 0.225 -- chance a cache spawn is chosen
 
 local ITEM_CHANCES = {
 	Ranged		   = 1.375,

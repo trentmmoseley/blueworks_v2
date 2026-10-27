@@ -80,6 +80,9 @@ function PlayerService:KnitInit() : ()
             Humanoid.Died:Connect(function()
                 print(TheName, "has died.")
             end)
+
+            warn("below is temporary")
+            player:SetAttribute("inGame", true)
         end)
     end)
     
