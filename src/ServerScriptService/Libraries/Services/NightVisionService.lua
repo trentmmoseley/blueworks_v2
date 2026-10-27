@@ -14,12 +14,17 @@ local NVService       = Knit.CreateService({
 
 -- Toggles NV
 function NVService:ToggleNV(class : {}, on : boolean?)
-    class:Toggle(on)
+    if class.Character:GetAttribute("NVBattery") > 0 then
+        class:Toggle(on)
+    else
+        self.CommsService:SendSubtitle(nil, class.CharacterClass.Player, "Replace goggle batteries", "Red")
+    end
 end
 
 -- On knit init completion
 function NVService:KnitInit() : ()
     self.CharService = _G.Knit.GetService("CharService")
+    self.CommsService = _G.Knit.GetService("CommsService")
 
     -- On NV toggle
     self.Client.NVToggle:Connect(function(player : Player)

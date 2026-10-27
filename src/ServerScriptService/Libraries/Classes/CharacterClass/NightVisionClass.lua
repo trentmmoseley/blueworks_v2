@@ -39,12 +39,12 @@ function NVClass:Toggle(on : boolean?)
         self.NVConn = RunService.PreSimulation:Connect(function(dt)
             local endConn = false
             self.Character:SetAttribute("NVBattery", math.clamp(self.Character:GetAttribute("NVBattery") - self.BatteryDrainRate * dt, 0, self.Character:GetAttribute("MaxNVBattery")))
-            if self.Character:GetAttribute("NVBattery") < dt then
-                NVClass:Toggle(false)
+            if self.Character:GetAttribute("NVBattery") <= 0 then
+                self:Toggle(false)
                 endConn = true
             end
 
-            if endConn then
+            if endConn and self.NVConn then
                 self.NVConn:Disconnect()
                 self.NVConn = nil
             end

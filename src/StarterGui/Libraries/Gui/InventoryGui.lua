@@ -122,7 +122,7 @@ local function paintUI() : ()
                 if part:IsA("BasePart") then
                     part.CastShadow = false
                     part.Material = Enum.Material.Neon
-                    part.Color = TierInfo.Color
+                    part.Color = TierInfo.Color:Lerp(Color3.fromRGB(255, 255, 255), 1/3)
                 end
             end            
         end
