@@ -36,7 +36,8 @@ local ANIMS         = {
     ["Cloak"]       = {95947585478349, Enum.AnimationPriority.Action4},
     ["Grab"]        = {88986754999227, Enum.AnimationPriority.Action4},
     ["Charge"]      = {98924964685899, Enum.AnimationPriority.Action4},
-    ["Stunned"]     = {122410086598709, Enum.AnimationPriority.Action4}
+    ["Stunned"]     = {122410086598709, Enum.AnimationPriority.Action4},
+    ["Dodge"]       = {132452617395170, Enum.AnimationPriority.Action4}
 }
 
 local ANIM_GRAB_VICTIM = 121534838798001
@@ -94,6 +95,14 @@ local SIGHT_FOV      = 0.5  -- minimum facing alignment (LookVector dot directio
 local UPDATE_INTERVAL = 1/4 -- seconds between awareness checks and path re-runs
 
 local ATTACK_INTERVAL = 3/4
+
+local DODGE_MAX_CHANCE       = 0.15 -- dodge chance once every Node is calibrated (0% when none are)
+local DODGE_DISTANCE_PERCENT = 3/4  -- teleports to this fraction of his distance from the target
+local DODGE_CLEARANCE        = 2    -- studs kept between the dodge landing spot and any obstruction
+local DODGE_ATTEMPTS         = 12   -- raycast directions tried before the dodge is given up
+
+-- States in which dodging would break the mechanic he is currently performing
+local DODGE_BLOCKED_STATES   = {STALK = true, GRAB = true, CARRY = true, RETREAT = true}
 
 local INVIS_LENGTH   = 0         -- 0 keeps the Proxy invisible until he is forced to phase back in
 local INVIS_STRENGTH = math.huge -- completely invisible (parts, decals, beams, particles, lights, GUIs)
@@ -195,7 +204,7 @@ return function(rig : Model)
             local Animation = Instance.new("Animation")
             Animation.AnimationId = "rbxassetid://"..id[1]
             local LoadedAnim : AnimationTrack = rig:WaitForChild("Humanoid").Animator:LoadAnimation(Animation)
-            LoadedAnim.Looped = not table.find({"Jump", "Land", "Spawn"}, tag)
+            LoadedAnim.Looped = not table.find({"Jump", "Land", "Spawn", "Dodge"}, tag)
             LoadedAnim.Priority = id[2]
             LoadedAnims[tag] = LoadedAnim
         end
@@ -440,6 +449,52 @@ return function(rig : Model)
             end
 
             return nil
+        end
+
+        -- Picks a spot on a ring around the target: casts outward at random angles and
+        -- backs off from anything hit, so the dodge never lands inside geometry
+        local function getDodgeCFrame(Target : Model, Range : number) : CFrame?
+            local Origin = Target.PrimaryPart.CFrame.Position
+            local RayParams = RaycastParams.new()
+            RayParams.FilterType = Enum.RaycastFilterType.Exclude
+            RayParams.FilterDescendantsInstances = {rig, Target}
+
+            for _ = 1, DODGE_ATTEMPTS do
+                local Angle = Rand:NextNumber(0, math.pi * 2)
+                local Direction = Vector3.new(math.cos(Angle), 0, math.sin(Angle))
+                local Hit = game.Workspace:Raycast(Origin, Direction * Range, RayParams)
+                local Distance = Hit and Hit.Distance - DODGE_CLEARANCE or Range
+
+                if Distance > DODGE_CLEARANCE then
+                    local Position = Origin + Direction * Distance
+                    return CFrame.lookAt(Position, Vector3.new(Origin.X, Position.Y, Origin.Z))
+                end
+            end
+
+            return nil
+        end
+
+        -- Rolls the Node-scaled dodge chance; on success, plays the dodge animation and
+        -- teleports around the locked-on target so he has to be found again
+        local function tryDodge()
+            if DODGE_BLOCKED_STATES[CurrentState] or Awareness < CHASE_LEVEL or not isValidTarget(SensedTarget) then
+                return
+            end
+
+            if Rand:NextNumber() >= DODGE_MAX_CHANCE * RoundService:NodeProgress() then
+                return
+            end
+
+            local InitialDistance = (SensedTarget.PrimaryPart.CFrame.Position - rig.PrimaryPart.CFrame.Position).Magnitude
+            local DodgeCFrame = getDodgeCFrame(SensedTarget, InitialDistance * DODGE_DISTANCE_PERCENT)
+            if not DodgeCFrame then
+                return
+            end
+
+            LoadedAnims.Dodge:Play()
+            rig:PivotTo(DodgeCFrame)
+            LastPosition = DodgeCFrame.Position
+            NextPathRun = 0 -- re-paths from the new position on the next tick
         end
 
         local function startStalk() : boolean
@@ -1413,6 +1468,8 @@ return function(rig : Model)
                     MaxLimit *= 0.85
                     CommsService:GlobalSubtitle("PNDR-4075 has retreated for 30 seconds", Color3.fromRGB(87, 140, 84), true)
                 end
+            elseif DamageTaken > 0 then
+                tryDodge()
             end
 
             PrevHealth = Health
