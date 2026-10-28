@@ -1,12 +1,15 @@
 -- Services
 local Players         = game:GetService("Players")
 local RepStorage      = game:GetService("ReplicatedStorage")
+local Teams           = game:GetService("Teams")
 
 -- Modules and objects
 local Knit            = require(RepStorage.Packages.Knit)
 local TeamService     = Knit.CreateService({
     Name = "TeamService",
-    Client = {}
+    Client = {},
+    Teams = {},
+    Tracked = {}
 })
 
 -- [[ funcs ]] --
@@ -74,9 +77,83 @@ function TeamService:GetTeam(player : Model | Player) : string
     return Player:GetAttribute("Team")
 end
 
+-- Gets all members of team
+function TeamService:GetTeamMembers(team : string) : {}
+    return self.Teams[team]
+end
+
+-- Registers character in its team's member list and keeps membership updated
+function TeamService:TrackCharacter(character : Model) : ()
+    if self.Tracked[character] then return end
+
+    local Record = {Team = nil, Connections = {}}
+    self.Tracked[character] = Record
+
+    -- Moves character between team lists
+    local function moveToTeam(newTeam : string?) : ()
+        if Record.Team and self.Teams[Record.Team] then
+            local Index = table.find(self.Teams[Record.Team], character)
+            if Index then
+                table.remove(self.Teams[Record.Team], Index)
+            end
+            Record.Team = nil
+        end
+
+        if newTeam then
+            if not self.Teams[newTeam] then
+                self.Teams[newTeam] = {}
+            end
+            table.insert(self.Teams[newTeam], character)
+            Record.Team = newTeam
+        end
+    end
+
+    moveToTeam(character:GetAttribute("Team"))
+
+    -- Moves character if its team changes
+    table.insert(Record.Connections, character:GetAttributeChangedSignal("Team"):Connect(function()
+        moveToTeam(character:GetAttribute("Team"))
+    end))
+
+    -- Removes character once it leaves the game
+    table.insert(Record.Connections, character.AncestryChanged:Connect(function(_, parent)
+        if parent then return end
+
+        moveToTeam(nil)
+
+        for _, conn in Record.Connections do
+            conn:Disconnect()
+        end
+
+        self.Tracked[character] = nil
+    end))
+end
+
 -- On knit init
 function TeamService:KnitInit() : ()
     self.CharService = _G.Knit.GetService("CharService")
+
+    -- Registers a member list for every current and future team
+    for _, team in Teams:GetChildren() do
+        self.Teams[team.Name] = {}
+    end
+
+    Teams.ChildAdded:Connect(function(team : Team)
+        self.Teams[team.Name] = self.Teams[team.Name] or {}
+    end)
+
+    Teams.ChildRemoved:Connect(function(team : Team)
+        self.Teams[team.Name] = nil
+    end)
+
+    -- Tracks all current and future characters
+    for character in self.CharService:GetAllCharClasses() do
+        self:TrackCharacter(character)
+    end
+
+    self.CharService.ClassAdded:Connect(function(charClass : {})
+        self:TrackCharacter(charClass.Character)
+    end)
 end
 
 return TeamService

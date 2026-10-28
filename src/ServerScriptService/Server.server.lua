@@ -39,3 +39,8 @@ end)
 end]]--
 _G.Knit.GetService("MapService"):Interactables()
 local Proxy = _G.Knit.GetService("NPCService"):CreateNPC("Proxy", CFrame.new(20, 10, 0))
+
+repeat task.wait(4) until #game.Teams.Squadmates:GetPlayers() > 0
+
+local Winner, Outcome = _G.Knit.GetService("RoundService"):Classic()
+warn(Winner, Outcome)
