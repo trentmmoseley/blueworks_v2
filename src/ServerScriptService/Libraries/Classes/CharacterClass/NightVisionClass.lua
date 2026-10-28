@@ -29,6 +29,11 @@ function NVClass.new(charclass : {}) : {}
     return Self
 end
 
+-- Replenishes NV
+function NVClass:Replenish(amount : number)
+    self.Character:SetAttribute("NVBattery", math.min(self.Character:GetAttribute("NVBattery") + amount, self.Character:GetAttribute("MaxNVBattery")))
+end
+
 -- Toggles NV
 function NVClass:Toggle(on : boolean?)
     local dNV = on or not self.doNightVision
