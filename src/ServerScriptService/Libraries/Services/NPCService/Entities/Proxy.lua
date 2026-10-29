@@ -103,7 +103,7 @@ local DODGE_CLEARANCE        = 2    -- studs kept between the dodge landing spot
 local DODGE_ATTEMPTS         = 12   -- raycast directions tried before the dodge is given up
 
 -- States in which dodging would break the mechanic he is currently performing
-local DODGE_BLOCKED_STATES   = {STALK = true, GRAB = true, CARRY = true, RETREAT = true}
+local DODGE_BLOCKED_STATES   = {STALK = true, GRAB = true, CARRY = true, RETREAT = true, CHARGE = true}
 
 local INVIS_LENGTH   = 0         -- 0 keeps the Proxy invisible until he is forced to phase back in
 local INVIS_STRENGTH = math.huge -- completely invisible (parts, decals, beams, particles, lights, GUIs)
