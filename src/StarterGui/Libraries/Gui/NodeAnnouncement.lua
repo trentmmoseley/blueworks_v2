@@ -37,6 +37,7 @@ function StaminaBar.Function()
         EventSounds.GlobalAnn:Play()
         if NodesLeft == 1 then
             EventSounds.HorrorSound:Play()
+            TweenService:Create(EventSounds.LastNode, TweenInfo.new(10), {Volume = 1/8}):Play()
         end
 
         task.wait(5)

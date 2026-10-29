@@ -400,6 +400,8 @@ function InvService:KnitInit() : ()
 
         updateInv()
 
+        self:AddItem(char, Tools:FindFirstChild("Riot Shield", true))
+
         updateHolster()
 
         -- Action request

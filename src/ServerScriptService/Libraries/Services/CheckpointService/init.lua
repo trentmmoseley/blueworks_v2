@@ -262,12 +262,8 @@ function CheckpointService:WireButtons(node : Model, ID : number) : ()
                 if not NodesLeft then return end
                 NodesLeft.Value = math.max(NodesLeft.Value - 1, 0)
 
-                if NodesLeft.Value == 0 then
-                    self.CommsService:GlobalSubtitle("All Nodes calibrated", "Green")
-                    self.S3:GlobalSound("GlobalAnn")
-                else
-                    NodeAnn:FireAll()
-                end
+                NodeAnn:FireAll()
+                self.S3:GlobalSound("GlobalAnn")
 
                 -- Displays code if applicable
                 local Code = node:GetAttribute("Code")

@@ -1213,6 +1213,11 @@ return function(rig : Model)
             if os.clock() >= NextPathRun then
                 NextPathRun = os.clock() + 1/4
                 Path:Run(SensedTarget.PrimaryPart.CFrame.Position)
+                -- Path:Run yields, and the Health signal can switch him to RETREAT (or
+                -- the target can die) while it runs; bail out instead of attacking below
+                if CurrentState ~= "CHASE" or not isValidTarget(SensedTarget) then
+                    return
+                end
             end
 
             -- Attacking
@@ -1522,6 +1527,12 @@ return function(rig : Model)
         end)
 
         repeat task.wait() until not LifeConn
+
+        -- Announcing death
+        if rig:GetAttribute("Health") == 0 then
+            CommsService:GlobalSubtitle("PNDR-4075 neutralized successfully", Color3.fromRGB(0, 255, 0), true)
+            _G.Knit.GetService("StraySoundService"):PlaySound("GlobalAnn")
+        end
 
         if rig then
             rig:Destroy()
