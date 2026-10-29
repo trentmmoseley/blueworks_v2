@@ -19,7 +19,7 @@ local Battery        = TheGui.Battery
 
 -- Toggles UI
 local function toggleUI()
-    local doVN = Character:GetAttribute("doNightVision") == true and Player.Team == game.Teams.Squadmates
+    local doVN = Character:GetAttribute("doNightVision") == true and Player.Team == game.Teams.Squadmates and (Character and Character:FindFirstAncestor("Characters"))
     TheGui.Enabled = doVN
 
     if doVN then
@@ -40,6 +40,8 @@ end
 function StaminaBar.Function()
     toggleUI()
     Character:GetAttributeChangedSignal("doNightVision"):Connect(toggleUI)
+    Player:GetPropertyChangedSignal("Team"):Connect(toggleUI)
+    Character.Changed:Connect(toggleUI)
 
     task.spawn(function()
         while true do
