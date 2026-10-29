@@ -115,7 +115,7 @@ local function setupCache(cachespawn : Part, SCFolder : Folder)
                 local ChosenItem = chooseItem(CompiledItems, Tier)
 
                 local CompiledTool = InvService:CompileTool(ChosenItem)
-                StrayLoot:AddLoot(CompiledTool, (((Cache.PrimaryPart.CFrame + Cache.PrimaryPart.CFrame.LookVector * 4) + Vector3.new(0, 1, 0)) * CFrame.new(Lerp(-1, 1, ToolCount == 1 and 0.5 or Progress(i, 1, ToolCount)) * 4, 0, 0)).Position)
+                StrayLoot:AddLoot(CompiledTool, ((Cache.PrimaryPart.CFrame + Vector3.new(0, 1, 0)) * CFrame.new(Lerp(-1, 1, ToolCount == 1 and 0.5 or Progress(i, 1, ToolCount)) * 4, 0, 0)).Position)
             end
 		end
 	end)

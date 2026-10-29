@@ -98,6 +98,7 @@ local ATTACK_INTERVAL = 3/4
 
 local DODGE_MAX_CHANCE       = 0.15 -- dodge chance once every Node is calibrated (0% when none are)
 local DODGE_DISTANCE_PERCENT = 3/4  -- teleports to this fraction of his distance from the target
+local DODGE_ANGLE_RANGE      = math.rad(30) -- how far around the target he may land from his current bearing
 local DODGE_CLEARANCE        = 2    -- studs kept between the dodge landing spot and any obstruction
 local DODGE_ATTEMPTS         = 12   -- raycast directions tried before the dodge is given up
 
@@ -236,15 +237,37 @@ return function(rig : Model)
 
         -- Grows appendages as Nodes are calibrated; each client works out which ones are owed
         local NodesLeft = RepStorage.GameValues.Numbers.NodesLeft
+
+        -- Endgame empowerment: once every Node is calibrated his max health is raised
+        -- by half and fully restored, but he can finally be killed for good
+        local EndgameBuffed = false
+        local function applyEndgameBuff()
+            if EndgameBuffed then
+                return
+            end
+            EndgameBuffed = true
+
+            rig:SetAttribute("MaxHealth", rig:GetAttribute("MaxHealth") * 3/2)
+            rig:SetAttribute("Health", rig:GetAttribute("MaxHealth"))
+        end
+
         local GrowthConn = NodesLeft.Changed:Connect(function()
             if rig.Parent and rig.PrimaryPart then
                 VFXService:GlobalVFX("ProxyEffects", "Grow", rig.PrimaryPart.CFrame, rig)
+            end
+
+            if NodesLeft.Value == 0 then
+                applyEndgameBuff()
             end
         end)
 
         -- Catches clients up if the Proxy spawns after growth thresholds were crossed
         if rig.PrimaryPart and RoundService:NodeProgress() > 0 then
             VFXService:GlobalVFX("ProxyEffects", "Grow", rig.PrimaryPart.CFrame, rig)
+
+            if NodesLeft.Value == 0 then
+                applyEndgameBuff()
+            end
         end
 
         -- Replays the growth stage for players who join after thresholds were crossed
@@ -268,7 +291,7 @@ return function(rig : Model)
 
         -- Calculates aggression level
         local function aggroLevel() : number
-            return 1 + (RoundService:NodeProgress() * 0.75) + TotalDamage / 1600 + FailedGrabs / 14
+            return 1 + RoundService:NodeProgress() + TotalDamage / 1600 + FailedGrabs / 8
         end
 
         local function getValidTargets() : {Model}
@@ -319,7 +342,7 @@ return function(rig : Model)
                 local Distance = Offset.Magnitude
 
                 -- Sight: needs to be in front of self with an unobstructed line to the target
-                if Distance < SIGHT_RANGE and (Distance < 1 or Offset.Unit:Dot(LookVector) > SIGHT_FOV) then
+                if Distance < SIGHT_RANGE and (Distance < 1 or Offset.Unit:Dot(LookVector) > SIGHT_FOV * ((aggroLevel() - 1) / 2)) then
                     local Raycast = game.Workspace:Raycast(EyePosition, Offset, RayParams)
 
                     if Raycast and Raycast.Instance:IsDescendantOf(char) and Distance < SeenDistance then
@@ -328,8 +351,9 @@ return function(rig : Model)
                     end
                 end
 
-                -- Noise
-                local Noise  = math.max(char:GetAttribute("Noise") or 0, 3)
+                -- Noise: with every Node calibrated he senses all remaining targets and
+                -- locks onto the nearest; the huge-but-finite base keeps nearer ones ahead
+                local Noise  = NodesLeft.Value == 0 and 1e6 or math.max(char:GetAttribute("Noise") or 0, 3)
                 local Signal = Noise - Distance
 
                 if Signal > BestSignal then
@@ -451,16 +475,19 @@ return function(rig : Model)
             return nil
         end
 
-        -- Picks a spot on a ring around the target: casts outward at random angles and
-        -- backs off from anything hit, so the dodge never lands inside geometry
+        -- Picks a spot on a ring around the target: casts outward at random angles within
+        -- DODGE_ANGLE_RANGE of his current bearing from the target and backs off from
+        -- anything hit, so the dodge never lands inside geometry
         local function getDodgeCFrame(Target : Model, Range : number) : CFrame?
             local Origin = Target.PrimaryPart.CFrame.Position
+            local Offset = rig.PrimaryPart.CFrame.Position - Origin
+            local BaseAngle = math.atan(Offset.Z, Offset.X)
             local RayParams = RaycastParams.new()
             RayParams.FilterType = Enum.RaycastFilterType.Exclude
             RayParams.FilterDescendantsInstances = {rig, Target}
 
             for _ = 1, DODGE_ATTEMPTS do
-                local Angle = Rand:NextNumber(0, math.pi * 2)
+                local Angle = BaseAngle + Rand:NextNumber(-DODGE_ANGLE_RANGE, DODGE_ANGLE_RANGE)
                 local Direction = Vector3.new(math.cos(Angle), 0, math.sin(Angle))
                 local Hit = game.Workspace:Raycast(Origin, Direction * Range, RayParams)
                 local Distance = Hit and Hit.Distance - DODGE_CLEARANCE or Range
@@ -492,6 +519,7 @@ return function(rig : Model)
             end
 
             LoadedAnims.Dodge:Play()
+            PlaySound(9120769331, "Init", rig.PrimaryPart, nil, 1, 1)
             rig:PivotTo(DodgeCFrame)
             LastPosition = DodgeCFrame.Position
             NextPathRun = 0 -- re-paths from the new position on the next tick
@@ -1304,6 +1332,11 @@ return function(rig : Model)
                 return
             end
 
+            -- Dead for good: stays frozen as a corpse until HealthService's cleanup removes the rig
+            if Humanoid.Health <= 0 then
+                return
+            end
+
             if CurrentState == "STALK" or CurrentState == "CARRY" then
                 Humanoid.WalkSpeed = SPEEDS[CurrentState]
             else
@@ -1412,6 +1445,13 @@ return function(rig : Model)
 
         NPCService.Client.ProxyGrabInput:Connect(handleGrabInput)
 
+        -- Cuts looping effects when he dies for good
+        Humanoid.Died:Connect(function()
+            LoadedAnims.Charge:Stop()
+            CloakAmbience.Volume = 0
+            FlyAmbience:Stop()
+        end)
+
         -- Locks onto attacker whenever attacked
         CombatService.CharacterAttacked:Connect(function(attacker : Model | Player, target)
             if attacker and target == rig and CurrentState == "PATROL" then
@@ -1422,6 +1462,7 @@ return function(rig : Model)
         end)
 
         -- Limit
+        local Killed = false
         local PrevHealth = rig:GetAttribute("Health")
         rig:GetAttributeChangedSignal("Health"):Connect(function()
             local Health = rig:GetAttribute("Health")
@@ -1429,8 +1470,14 @@ return function(rig : Model)
             Limit += DamageTaken
             TotalDamage += DamageTaken
 
+            -- With every Node calibrated there is no more retreating: zero health
+            -- kills him for good (Killed guards against InstaKill re-firing this signal)
+            if Health == 0 and NodesLeft.Value == 0 and not Killed then
+                Killed = true
+                RigClass.HealthClass:InstaKill()
+
             -- Retreats if Limit is high enough
-            if (Limit >= MaxLimit or Health == 0) and CurrentState ~= "RETREAT" then
+            elseif (Limit >= MaxLimit or Health == 0) and CurrentState ~= "RETREAT" then
                 if CurrentState == "STALK" then
                     StalkStart = 0
                     StalkTeleportCFrame = nil

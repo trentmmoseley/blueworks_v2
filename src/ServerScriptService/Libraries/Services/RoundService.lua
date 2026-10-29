@@ -30,6 +30,7 @@ function RoundService:Classic() : (string, string)
     local Winner, Outcome = "", ""
 
     local TimeElapsed = 0
+    local SubjectsSeen = false -- only counts a purge after Subjects entities were actually present
     TimeLeft.Value = TIME_LIMITS.Classic
     TimeLeft:SetAttribute("Init", TimeLeft.Value)
 
@@ -53,14 +54,24 @@ function RoundService:Classic() : (string, string)
             Outcome = "SQUADMATES_WIPED"
         end
 
-        -- Subject(s) contained
-        if NodesLeft.Value == 0 then
-            -- make it so that subjects' healths drain when no nodes left
+        -- Subject(s) purged: every Subjects entity (e.g. the Proxy) is dead or gone
+        local Subjects = self.TeamService:GetTeamMembers("Subjects")
+        local SubjectsAlive = 0
 
-            if #self.TeamService:GetTeamMembers("Subjects") == 0 then
-                Winner = "Subjects"
-                Outcome = "SQUADMATES_WIPED"
+        if Subjects then
+            for _, char in Subjects do
+                local Hum = char.Parent and char:FindFirstChildOfClass("Humanoid")
+                if Hum and Hum.Health > 0 then
+                    SubjectsAlive += 1
+                end
             end
+        end
+
+        if SubjectsAlive > 0 then
+            SubjectsSeen = true
+        elseif SubjectsSeen then
+            Winner = "Squadmates"
+            Outcome = "SUBJECTS_PURGED"
         end
 
         -- End of game
