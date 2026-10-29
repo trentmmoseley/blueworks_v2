@@ -247,7 +247,6 @@ return function(rig : Model)
             end
             EndgameBuffed = true
 
-            rig:SetAttribute("MaxHealth", rig:GetAttribute("MaxHealth") * 3/2)
             rig:SetAttribute("Health", rig:GetAttribute("MaxHealth"))
         end
 
