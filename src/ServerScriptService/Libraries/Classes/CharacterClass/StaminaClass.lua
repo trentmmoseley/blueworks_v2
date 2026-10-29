@@ -46,6 +46,11 @@ function StamClass:SetStamina(amount : number, interval : boolean)
     self:Sync()
 end
 
+-- Increments Health
+function StamClass:Increment(number : number) : ()
+    self:SetStamina(self.Character:GetAttribute("Stamina") + number)
+end
+
 -- Starts class
 function StamClass:Start()
     if self.CharacterClass.Player and self.CharacterClass.Player.Team == game.Teams.Spectators then return end
@@ -78,7 +83,8 @@ function StamClass:Step(dt)
 
     local MmtInfo = MMT_SETTINGS[(not isMoving and MovementType == "RUN") and "WALK" or MovementType]
 
-    self:SetStamina(MmtInfo.StaminaRegen * dt * (not isMoving and 1.25 or 1), true)
+    local energyBoost = self.CharacterClass.EffectClass:Check("Energy Boost")
+    self:SetStamina(not energyBoost and (MmtInfo.StaminaRegen * dt * (not isMoving and 1.25 or 1)) or self.MaxStamina, not energyBoost)
     if MovementType ~= "WALK" and (self.Stamina <= STAM_EPSILON or (MovementType == "RUN" and self.Character:GetAttribute("isAiming"))) then
         self.Character:SetAttribute("MovementType", "WALK")
     end

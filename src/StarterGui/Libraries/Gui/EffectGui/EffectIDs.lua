@@ -44,6 +44,17 @@ return {
 		["Positivity"]	  = "Bad",
 	},
 
+	["Energy Boost"] = {
+		["Image"] = 91236408738716,
+		["Colors"] = {
+
+			["Primary"]   = Color3.fromRGB(0, 255, 238),
+			["Secondary"] = Color3.fromRGB(0, 92, 113),
+
+		},
+		["Positivity"]	  = "Good",
+	},
+
 	["Stunned"]  = {
 		["Image"]  = 106596381712906,
 		["Colors"] = {
@@ -53,6 +64,6 @@ return {
 
 		},
 		["Positivity"]	  = "Bad",
-	}
+	},
 	
 }

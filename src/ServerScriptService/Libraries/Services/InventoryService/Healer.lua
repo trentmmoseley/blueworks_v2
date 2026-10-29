@@ -55,10 +55,10 @@ function Healer.initItem(item, char)
 		end
 
 		local AnimID = item.Configuration.Anims.VM.Use.AnimationId
-		if UsingPlayer then
+		if UsingPlayer and ItemInfo.UseLength > 0 then
 			VMAnim:Fire(UsingPlayer, "START", AnimID)
 		end
-		if UseSelfAnim then
+		if UseSelfAnim and ItemInfo.UseLength > 0 then
 			UseSelfAnim:Play()
 		end
 
@@ -67,17 +67,17 @@ function Healer.initItem(item, char)
 		local soundCancelled = false
 		
 		task.delay(ItemInfo.UseSoundDelay or 0, function()
-			if not soundCancelled then
+			if not soundCancelled and item and item.Parent then
 				UseSound = PlaySound(item.Handle.Use.SoundId, "Use", char.PrimaryPart, nil, 1, 1)
 			end
 		end)
 
-		local useSuccess = CAS:ChargedAction(char, "HealerUse", ItemInfo.UseLength, function()
+		local useSuccess = ItemInfo.UseLength == 0 or CAS:ChargedAction(char, "HealerUse", ItemInfo.UseLength, function()
 			return char:GetAttribute(ItemInfo.HealStat) < char:GetAttribute(`Max{ItemInfo.HealStat}`)
 		end)
 
 		-- The charged action has resolved (success or interruption): stop the char animation
-		if UseSelfAnim then
+		if UseSelfAnim and ItemInfo.UseLength > 0 then
 			UseSelfAnim:Stop()
 		end
 
@@ -101,6 +101,12 @@ function Healer.initItem(item, char)
 			if ItemInfo.Stops then
 				for _, effect in pairs(ItemInfo.Stops) do
 					EffectService:Remove(char, effect)
+				end
+			end
+
+			if ItemInfo.Gives then
+				for effect, duration in pairs(ItemInfo.Gives) do
+					EffectService:Add(char, effect, duration)
 				end
 			end
 

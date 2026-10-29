@@ -21,6 +21,11 @@ function EffectClass.new(charclass : {}) : {}
     return Self
 end
 
+-- Checks if effect exists
+function EffectClass:Check(effect : string) : boolean
+    return self.Effects[effect] ~= nil and os.clock() < self.Effects[effect][1]
+end
+
 -- Adds effect
 function EffectClass:Add(effect : string, duration : number?, strength : number?)
     self.Effects[effect] = {os.clock() + duration, strength or 1} -- expiry time, strength
