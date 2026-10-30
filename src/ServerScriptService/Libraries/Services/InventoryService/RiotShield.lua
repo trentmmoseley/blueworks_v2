@@ -6,21 +6,23 @@ local _general = require(script.Parent._general)
 function Template.initItem(item, char)
 	local BaseItem = _general.initItem(item, char)
 	local ItemInfo = require(item.Configuration.ItemInfo)
+
+	local isHolding = false
 	
 	table.insert(BaseItem["Functions"]["Equip"], function()
 		print("works")
 	end)
 	
 	table.insert(BaseItem["Functions"]["Unequip"], function()
-		print("also works")
+		isHolding = false
 	end)
 	
 	table.insert(BaseItem["Functions"]["Activate"], function()
-		print("a;slkdfas;ldfkjasd;lkfj works")
+		isHolding = true
 	end)
 	
 	table.insert(BaseItem["Functions"]["Deactivate"], function()
-		print("asdffsdasdfasdfafsadfsda works sdf sdfdsfsdfsd")
+		isHolding = false
 	end)
 	
 	return BaseItem
