@@ -399,9 +399,6 @@ function InvService:KnitInit() : ()
         end
 
         updateInv()
-
-        self:AddItem(char, Tools:FindFirstChild("Riot Shield", true))
-
         updateHolster()
 
         -- Action request

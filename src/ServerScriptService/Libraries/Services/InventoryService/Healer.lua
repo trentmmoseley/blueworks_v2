@@ -87,7 +87,7 @@ function Healer.initItem(item, char)
 
 		if useSuccess then
 			StatClass:Increment(ItemInfo.Potency)
-			ScoreService:AwardScore(char, 10, "Healed self", true)
+			ScoreService:AwardScore(char, 15, "Healed self", true)
 
 			if UsingPlayer then
 				VFXService:PlayVFX(UsingPlayer, "HealEffect", "Heal", char.PrimaryPart.CFrame, Color3.fromRGB(100, 255, 100))

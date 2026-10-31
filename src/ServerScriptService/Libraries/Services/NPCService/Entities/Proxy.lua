@@ -96,6 +96,11 @@ local UPDATE_INTERVAL = 1/4 -- seconds between awareness checks and path re-runs
 
 local ATTACK_INTERVAL = 3/4
 
+-- Endgame anti-softlock: with every Node calibrated he senses targets through
+-- walls and can path into an unreachable spot; landing no attack for this long
+-- while chasing sends him into a Retreat so he re-paths instead of staying stuck
+local CHASE_TIMEOUT   = 20
+
 local DODGE_MAX_CHANCE       = 0.15 -- dodge chance once every Node is calibrated (0% when none are)
 local DODGE_DISTANCE_PERCENT = 3/4  -- teleports to this fraction of his distance from the target
 local DODGE_ANGLE_RANGE      = math.rad(30) -- how far around the target he may land from his current bearing
@@ -109,6 +114,10 @@ local INVIS_LENGTH   = 0         -- 0 keeps the Proxy invisible until he is forc
 local INVIS_STRENGTH = math.huge -- completely invisible (parts, decals, beams, particles, lights, GUIs)
 
 local RETREAT_TIMEOUT = 15 -- seconds before a stuck retreat phases back in anyway
+
+-- Endgame lockout: once every Node is calibrated and he is below this fraction
+-- of his max health, he is cornered and can no longer Retreat to escape damage
+local RETREAT_LOCKOUT_HEALTH = 1/4
 
 local MIN_FALL_TIME  = 1/5 -- seconds airborne before a landing counts as a real fall
 local MIN_FALL_DIST  = 4   -- studs dropped before a landing counts as a real fall
@@ -161,6 +170,7 @@ return function(rig : Model)
         local GrabDiedConn : RBXScriptConnection? = nil
         local GrabDestroyingConn : RBXScriptConnection? = nil
         local FailedGrabs = 0
+        local LastAttack = 0
         local NextAttack = 0
         local NextCharge = 0
         local NextPathRun = 0
@@ -248,6 +258,13 @@ return function(rig : Model)
             EndgameBuffed = true
 
             rig:SetAttribute("Health", rig:GetAttribute("MaxHealth"))
+        end
+
+        -- Cornered: with every Node calibrated and little health left, he can no
+        -- longer phase out to escape
+        local function retreatBlocked() : boolean
+            return NodesLeft.Value == 0
+                and (rig:GetAttribute("Health") or 0) < (rig:GetAttribute("MaxHealth") or 0) * RETREAT_LOCKOUT_HEALTH
         end
 
         local GrowthConn = NodesLeft.Changed:Connect(function()
@@ -687,8 +704,13 @@ return function(rig : Model)
             if PlayerWon then
                 Victim:SetAttribute("ProxyGrabResult", "ESCAPED")
                 releaseGrab()
-                enterRetreat()
-                ScoreService:AwardScore(Victim, 40, "Escaped PNDR-4075", true)
+                if retreatBlocked() then
+                    -- Too weak to phase out: he just lets go and keeps fighting
+                    endCarry()
+                else
+                    enterRetreat()
+                end
+                ScoreService:AwardScore(Victim, 50, "Escaped PNDR-4075", true)
                 FailedGrabs += 1
                 PlaySound(112444846023457, "Escape", rig.PrimaryPart, nil, 1, 1)
                 return
@@ -949,6 +971,7 @@ return function(rig : Model)
             HeardTime = 0
             UnheardTime = 0
             CurrentState = "CHASE"
+            LastAttack = os.clock()
             NextPathRun = 0
             TimeSinceUpdate = 0
             updateDetection()
@@ -1063,6 +1086,7 @@ return function(rig : Model)
             -- Moves to chase if awareness > 2
             if Awareness > 2 and SensedTarget then
                 CurrentState = "CHASE"
+                LastAttack = os.clock()
 
                 local ChasingPlayer = Players:GetPlayerFromCharacter(SensedTarget)
                 if ChasingPlayer then
@@ -1116,6 +1140,7 @@ return function(rig : Model)
             if isValidTarget(SensedTarget) then
                 CurrentState = "CHASE"
                 Awareness = CHASE_LEVEL
+                LastAttack = os.clock()
                 updateDetection()
             else
                 CurrentState = "PATROL"
@@ -1210,6 +1235,23 @@ return function(rig : Model)
                 return
             end
 
+            -- Endgame anti-softlock: if he has landed no attack for too long while
+            -- chasing, he retreats and re-paths instead of staying stuck on the map
+            if NodesLeft.Value == 0 and os.clock() - LastAttack >= CHASE_TIMEOUT then
+                if retreatBlocked() then
+                    -- Too weak to phase out: breaks the softlock by teleporting to a
+                    -- random patrol point, then keeps chasing from there
+                    CurrentPatrolTarget = pickPatrolPoint(PreviousPatrolTarget)
+                    rig:PivotTo(CurrentPatrolTarget.CFrame)
+                    LastPosition = rig.PrimaryPart.CFrame.Position
+                    LastAttack = os.clock()
+                    NextPathRun = 0
+                else
+                    enterRetreat()
+                end
+                return
+            end
+
             if os.clock() >= NextPathRun then
                 NextPathRun = os.clock() + 1/4
                 Path:Run(SensedTarget.PrimaryPart.CFrame.Position)
@@ -1238,6 +1280,7 @@ return function(rig : Model)
                         -- Dot >= 0 means the target is within 90 degrees of either side of
                         -- the LookVector, i.e. anywhere in the 180 degree arc in front
                         if Offset.Magnitude < 6 and Offset.Unit:Dot(LookVector) >= 0 then
+                            LastAttack = os.clock()
                             PlaySound(HIT_SOUNDS[math.random(1, #HIT_SOUNDS)], "Hit", char.PrimaryPart, nil, 1, Rand:NextNumber(0.95, 1.05))
                             CombatService:Damage(rig, char, math.random(20, 25) * Lerp(1, aggroLevel(), 1/2.5), "PROXY_1", "DEFAULT", true, char.Torso, {})
 
@@ -1337,7 +1380,9 @@ return function(rig : Model)
             end
 
             -- Dead for good: stays frozen as a corpse until HealthService's cleanup removes the rig
-            if Humanoid.Health <= 0 then
+            if Humanoid.Health <= 0 or (rig:GetAttribute("Health") <= 0 and NodesLeft.Value == 0) then
+                LifeConn:Disconnect()
+                LifeConn = nil
                 return
             end
 
@@ -1364,7 +1409,7 @@ return function(rig : Model)
             end
 
             -- Healing
-            RigClass.HealthClass:Increment(dt * HEAL_RATES[CurrentState])
+            RigClass.HealthClass:Increment((NodesLeft.Value > 0 and HEAL_RATES[CurrentState] or -5) * dt)
 
             -- Animations
             if CurrentState ~= "CHARGE" and LoadedAnims.Charge.IsPlaying then
@@ -1480,8 +1525,9 @@ return function(rig : Model)
                 Killed = true
                 RigClass.HealthClass:InstaKill()
 
-            -- Retreats if Limit is high enough
-            elseif (Limit >= MaxLimit or Health == 0) and CurrentState ~= "RETREAT" then
+            -- Retreats if Limit is high enough, unless he is cornered: with every
+            -- Node calibrated and little health left there is no more escaping
+            elseif (Limit >= MaxLimit or Health == 0) and CurrentState ~= "RETREAT" and not retreatBlocked() then
                 if CurrentState == "STALK" then
                     StalkStart = 0
                     StalkTeleportCFrame = nil
@@ -1521,6 +1567,12 @@ return function(rig : Model)
                 end
             elseif DamageTaken > 0 then
                 tryDodge()
+            end
+
+            -- Crossing the cornered threshold mid-retreat forces him to phase
+            -- back into visibility instead of escaping
+            if CurrentState == "RETREAT" and retreatBlocked() then
+                endRetreat()
             end
 
             PrevHealth = Health

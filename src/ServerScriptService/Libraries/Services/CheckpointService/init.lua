@@ -255,7 +255,7 @@ function CheckpointService:WireButtons(node : Model, ID : number) : ()
                 -- Tweens Screen and Screen.SurfaceGui.ImageLabel to green colors like Doors
                 TweenService:Create(node.Door.Screen, TweenInfo.new(1), {Color = Color3.fromRGB(18, 33, 21)}):Play()
                 TweenService:Create(node.Door.Screen.SurfaceGui.ImageLabel, TweenInfo.new(1), {ImageColor3 = Color3.fromHSV(1/3, 1, 1)}):Play()
-                Knit.GetService("ScoreService"):AwardScore(player.Character, 20, "Calibrated Node", true)
+                Knit.GetService("ScoreService"):AwardScore(player.Character, 85, "Calibrated Node", true)
 
                 -- Subtracts from Node counter
                 local NodesLeft = getNodesLeft()

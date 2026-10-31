@@ -150,7 +150,7 @@ function HealthClass:Start() : ()
             self.Rig:SetAttribute("beingSaved", false)
             self:Set(self.Rig:GetAttribute("MaxHealth"))
 
-            _G.Knit.GetService("ScoreService"):AwardScore(plrwhotriggered.Character or plrwhotriggered.CharacterAdded:Wait(), 35, "Saved teammate", true)
+            _G.Knit.GetService("ScoreService"):AwardScore(plrwhotriggered.Character or plrwhotriggered.CharacterAdded:Wait(), 100, "Saved teammate", true)
         end
     end)
 
