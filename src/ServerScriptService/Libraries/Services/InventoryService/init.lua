@@ -464,6 +464,8 @@ function InvService:KnitInit() : ()
                 self.StrayLootService:AddLoot(DroppedItem, Position, GunAttachments)
             elseif action == "USE" and CurrentItem then
                 CurrentModule.onActivate()
+            elseif action == "STOP_USE" and CurrentItem then
+                CurrentModule.onDeactivate()
             end
         end)
 

@@ -82,6 +82,7 @@ local gunDetected	   = false
 local isPointAiming    = false
 local jumpChanged	   = false
 local usingMelee       = false
+local holdingItem      = false
 
 local LastLeanVal	   = nil
 local prevGunDetected  = false
@@ -203,6 +204,7 @@ local function clearViewmodel(toolclass)
 
     TrackingTool = nil
     gunDetected = false
+    holdingItem = false
 
     -- Clears the stored item info so clicks route back to punch() while
     -- unarmed; guarded by name in case a swap already replaced it with the
@@ -547,7 +549,15 @@ local function update(dt : number, sway, bobble, recoil) : ()
                 end
 
                 firingGun = false
-                InvService.ActionRequest:Fire("USE")
+
+                -- Hold items toggle off on a second press; everything else just uses
+                if holdingItem then
+                    holdingItem = false
+                    InvService.ActionRequest:Fire("STOP_USE")
+                else
+                    InvService.ActionRequest:Fire("USE")
+                    holdingItem = _G.CurrentI2.Class == "RiotShield"
+                end
             end
         else
             if os.clock() >= NextPunch then
@@ -611,8 +621,8 @@ function Viewmodel.Function()
         NewAnim:Destroy()
     end
 
-    -- VMAnim remote (plays/stops an animation based on action and ID)
-    VMAnim:On(function(action : string, animID : string?)
+    -- VMAnim remote (plays/stops an animation based on action and ID; loop makes it loop)
+    VMAnim:On(function(action : string, animID : string?, loop : boolean?)
         if not (TheVM and TheVM.Parent) then return end
 
         if action == "START" and animID then
@@ -629,6 +639,7 @@ function Viewmodel.Function()
                 VMAnimTracks[animID] = Track
             end
 
+            Track.Looped = loop == true
             Track:Play()
         elseif action == "STOP" then
             if animID then
@@ -683,6 +694,7 @@ function Viewmodel.Function()
         if EquipAnim then EquipAnim:Stop() EquipAnim = nil end
         gunDetected = false
         TrackingTool = nil
+        holdingItem = false
         stopPunchAnims()
 
         local ToolModel = ItemDisplays:FindFirstChild(toolclass.Name)
@@ -910,11 +922,21 @@ function Viewmodel.Function()
     end)
 
     UIS.InputEnded:Connect(function(input, processed)
-        if processed or Player:GetAttribute("isChatting") == true then return end
+        if Player:GetAttribute("isChatting") == true then return end
+
+        -- Tool.Deactivated does not fire when LMB is released over a GUI, so a
+        -- held item's release is reported directly regardless of GUI processing
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            firingGun = false
+            if holdingItem then
+                holdingItem = false
+                InvService.ActionRequest:Fire("STOP_USE")
+            end
+        end
+
+        if processed then return end
         if input.UserInputType == Enum.UserInputType.MouseButton2 then
             GunService.AimToggle:Fire(false)
-        elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
-            firingGun = false
         end
     end)
 
