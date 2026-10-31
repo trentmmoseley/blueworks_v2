@@ -27,6 +27,7 @@ local ITEM_CHANCES = {
 	Melee 		   = 1.15,
 	Chemlight	   = 0.85,
 	Battery 	   = 0.75,
+	RiotShield 	   = 0.6,
 }
 
 -- [[ funcs ]] --

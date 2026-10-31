@@ -53,7 +53,9 @@ function CombatService:Damage(attacker : Model?, target : Model, damage : number
     local AttackerID = attackerPresent and attacker:GetAttribute("ID") or nil
     local TargetID = target:GetAttribute("ID")
 
-    local doesDamage = (not attackerPresent or (not self.TeamService:AreTeammates(attacker, target) and AttackerClass.HealthClass.canAttack)) and TargetClass.HealthClass.canBeAttacked
+    local RiotShield = target:FindFirstChild("Riot Shield") -- riot shield cancels damage
+
+    local doesDamage = (not attackerPresent or (not self.TeamService:AreTeammates(attacker, target) and AttackerClass.HealthClass.canAttack and not RiotShield)) and TargetClass.HealthClass.canBeAttacked
     if doesDamage then
         -- Cause of death
         target:SetAttribute("CauseOfDeath", method)
@@ -126,6 +128,10 @@ function CombatService:Damage(attacker : Model?, target : Model, damage : number
 
         if AttackerClass and AttackerClass.Character then
             self.CharacterAttacked:Fire(AttackerClass.Character, target)
+        end
+    else
+        if RiotShield then
+            RiotShield:SetAttribute("Durability", math.max(RiotShield:GetAttribute("Durability") - damage, 0))
         end
     end
 

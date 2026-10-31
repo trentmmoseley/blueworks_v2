@@ -55,7 +55,7 @@ function MovementService:KnitInit() : ()
             local StamClass = CharClass.StaminaClass
 
             if mmt ~= "JUMP" then
-                if CharClass and (mmt ~= "RUN" or Character:GetAttribute("isAiming") ~= true) and not Character:GetAttribute("isDowned") then
+                if CharClass and (mmt ~= "RUN" or (Character:GetAttribute("isAiming") ~= true and Character:GetAttribute("useRiotShield") ~= true)) and not Character:GetAttribute("isDowned") then
                     if StamClass:CanDoAction(mmt) then
                         if canGetUp(Character, Character:GetAttribute("MovementType"), mmt) then
                             Character:SetAttribute("MovementType", mmt)

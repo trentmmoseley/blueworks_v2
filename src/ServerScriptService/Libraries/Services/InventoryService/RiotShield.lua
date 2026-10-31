@@ -1,5 +1,7 @@
 local Template = {}
 
+local InvService = _G.Knit.GetService("InventoryService")
+
 -- Services
 local Players 	 = game:GetService("Players")
 local RepStorage = game:GetService("ReplicatedStorage")
@@ -24,6 +26,13 @@ function Template.initItem(item, char)
 	end
 
 	local UseAnimID = item.Configuration.Anims.VM.Use.AnimationId
+
+	local Anims = {}
+	for _, anim in pairs(item.Configuration.Anims.Char:GetChildren()) do
+		local LoadedAnim = Humanoid:LoadAnimation(anim)
+		LoadedAnim.Priority = Enum.AnimationPriority[table.find({"Run", "Hold"}, anim.Name) and "Action" or "Action4"]
+		Anims[anim.Name] = LoadedAnim
+	end
 
 	local isHolding = false
 
@@ -54,7 +63,7 @@ function Template.initItem(item, char)
 
 		-- Loads durability
 		if not item:GetAttribute("Durability") then
-			item:SetAttribute("Durability", 500)
+			item:SetAttribute("Durability", 100)
 		end
 	end)
 	
@@ -71,10 +80,28 @@ function Template.initItem(item, char)
 	end)
 
 	-- Destroys item if durability is depleted
+	local LastDurability = item:GetAttribute("Durability") or 100
 	item:GetAttributeChangedSignal("Durability"):Connect(function()
-		if item:GetAttribute("Durability") == 0 then
+		local Durability = item:GetAttribute("Durability")
+		if Durability == 0 then
 			item:SetAttribute("Stack", 0)
+		else
+			Anims.Block:Play()
+			VMAnim:Fire(UsingPlayer, "START", item.Configuration.Anims.VM.Block.AnimationId)
 		end
+
+		-- Plays the Hit sound if the shield is still usable, or the Break sound if
+		-- destroyed, for every client (including the user). Sourced from ItemDisplays
+		-- on each client because the owner's client strips the equipped tool's
+		-- Handle (see MeleeLocal)
+		if Durability < LastDurability then
+			local SoundName = Durability == 0 and "Break" or "Hit"
+			if item.Handle and item.Handle:FindFirstChild(SoundName) then
+				InvService.Client.ActionRequest:FireAll("PLAY_SOUND", char, item.Name, SoundName)
+			end
+		end
+
+		LastDurability = Durability
 	end)
 	
 	return BaseItem

@@ -85,7 +85,7 @@ function StamClass:Step(dt)
 
     local energyBoost = self.CharacterClass.EffectClass:Check("Energy Boost")
     self:SetStamina(not energyBoost and (MmtInfo.StaminaRegen * dt * (not isMoving and 1.25 or 1)) or self.MaxStamina, not energyBoost)
-    if MovementType ~= "WALK" and (self.Stamina <= STAM_EPSILON or (MovementType == "RUN" and self.Character:GetAttribute("isAiming"))) then
+    if MovementType ~= "WALK" and (self.Stamina <= STAM_EPSILON or (MovementType == "RUN" and (self.Character:GetAttribute("isAiming") or self.Character:GetAttribute("useRiotShield")))) then
         self.Character:SetAttribute("MovementType", "WALK")
     end
 end
