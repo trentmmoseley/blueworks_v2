@@ -100,6 +100,11 @@ function CombatService:Damage(attacker : Model?, target : Model, damage : number
             TargetHumanoid:TakeDamage(damage)
         end
 
+        -- Mutes damage if target has Defense
+        if TargetClass.EffectClass:Check("Defense") then
+            damage *= 1 / (TargetClass.EffectClass:Get("Defense")[2] + 1)
+        end
+
         -- Other hit parts (for death screen)
         if otherhitparts then
             for _, part in target.Hitbox:GetChildren() do

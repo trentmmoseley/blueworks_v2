@@ -22,8 +22,8 @@ local Tiers        = require(RepStorage.Modules.Data.Tiers)
 local SPAWN_CHANCE = 0.5 -- chance a cache spawn is chosen
 
 local ITEM_CHANCES = {
-	Ranged		   = 1.375,
 	Healer		   = 1.75,
+	Ranged		   = 1.375,
 	Melee 		   = 1.15,
 	Chemlight	   = 0.85,
 	Battery 	   = 0.75,

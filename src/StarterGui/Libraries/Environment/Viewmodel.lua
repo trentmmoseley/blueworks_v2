@@ -805,8 +805,11 @@ function Viewmodel.Function()
         end
 
         task.defer(function()
+            -- Hides the equipped tool's world copy regardless of whether its
+            -- ItemInfo.Name matches the tool name; a mismatched name must not
+            -- leave the world copy visible alongside the viewmodel copy
             local FoundCharTool = Character:FindFirstChildOfClass("Tool")
-            if FoundCharTool and FoundCharTool.Name == toolclass.Name then
+            if FoundCharTool then
                 FoundCharTool:ClearAllChildren()
                 TrackingTool = FoundCharTool
             end

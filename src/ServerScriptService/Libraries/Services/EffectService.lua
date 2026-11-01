@@ -40,7 +40,7 @@ end
 function EffectService:Check(char : Model, effect : string)
     local Class = getClass(char)
 
-    if Class and Class.Effects[effect] and Class.Effects[effect][1] > os.clock() then
+    if Class and Class.Effects[effect] and Class.Effects[effect][1] > workspace:GetServerTimeNow() then
         return true, Class.Effects[effect][1]
     end
 end

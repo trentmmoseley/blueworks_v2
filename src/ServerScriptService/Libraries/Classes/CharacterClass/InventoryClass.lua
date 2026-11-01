@@ -19,7 +19,7 @@ function InvClass.new(charclass : {}) : {}
 
     Self.Items = {}
     Self.CurrentSlot = 0
-    Self.MaxSlots = 6
+    Self.MaxSlots = 7
 
     return Self
 end

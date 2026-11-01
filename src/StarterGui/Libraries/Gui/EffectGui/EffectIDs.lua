@@ -32,6 +32,17 @@ return {
 		},
 		["Positivity"]	  = "Bad",
 	},
+
+	["Defense"]  = {
+		["Image"] = 119115657479513,
+		["Colors"] = {
+
+			["Primary"]   = Color3.fromRGB(76, 95, 236),
+			["Secondary"] = Color3.fromRGB(54, 47, 103),
+
+		},
+		["Positivity"]	  = "Good",
+	},
 	
 	["Delirium"]  = {
 		["Image"]  = 12772643598,
@@ -50,6 +61,17 @@ return {
 
 			["Primary"]   = Color3.fromRGB(0, 255, 238),
 			["Secondary"] = Color3.fromRGB(0, 92, 113),
+
+		},
+		["Positivity"]	  = "Good",
+	},
+
+	["Healing"]  = {
+		["Image"] = 84287320903405,
+		["Colors"] = {
+
+			["Primary"]   = Color3.fromRGB(0, 255, 0),
+			["Secondary"] = Color3.fromRGB(0, 92, 0),
 
 		},
 		["Positivity"]	  = "Good",

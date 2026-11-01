@@ -101,7 +101,7 @@ local ATTACK_INTERVAL = 3/4
 -- while chasing sends him into a Retreat so he re-paths instead of staying stuck
 local CHASE_TIMEOUT   = 20
 
-local DODGE_MAX_CHANCE       = 0.15 -- dodge chance once every Node is calibrated (0% when none are)
+local DODGE_MAX_CHANCE       = 0.1 -- dodge chance once every Node is calibrated (0% when none are)
 local DODGE_DISTANCE_PERCENT = 3/4  -- teleports to this fraction of his distance from the target
 local DODGE_ANGLE_RANGE      = math.rad(30) -- how far around the target he may land from his current bearing
 local DODGE_CLEARANCE        = 2    -- studs kept between the dodge landing spot and any obstruction
@@ -257,7 +257,7 @@ return function(rig : Model)
             end
             EndgameBuffed = true
 
-            rig:SetAttribute("Health", rig:GetAttribute("MaxHealth"))
+            rig:SetAttribute("Health", math.max(rig:GetAttribute("Health"), rig:GetAttribute("MaxHealth") * 0.8))
         end
 
         -- Cornered: with every Node calibrated and little health left, he can no
@@ -1501,9 +1501,19 @@ return function(rig : Model)
             FlyAmbience:Stop()
         end)
 
-        -- Locks onto attacker whenever attacked
+        -- Dodges and locks onto the attacker whenever attacked; rolling the dodge
+        -- through this signal (which only real damaging attacks fire) keeps the
+        -- endgame health drain from triggering dodges on its own
         CombatService.CharacterAttacked:Connect(function(attacker : Model | Player, target)
-            if attacker and target == rig and CurrentState == "PATROL" then
+            if not attacker or target ~= rig or (rig:GetAttribute("Health") or 0) <= 0 then
+                return
+            end
+
+            -- Rolled before the lock-on below raises Awareness, matching the order
+            -- the Health signal previously rolled it in
+            tryDodge()
+
+            if CurrentState == "PATROL" then
                 SensedTarget = attacker
                 Awareness = 3
                 updateDetection()
@@ -1565,8 +1575,6 @@ return function(rig : Model)
                     MaxLimit *= 0.85
                     CommsService:GlobalSubtitle("PNDR-4075 has retreated for 30 seconds", Color3.fromRGB(87, 140, 84), true)
                 end
-            elseif DamageTaken > 0 then
-                tryDodge()
             end
 
             -- Crossing the cornered threshold mid-retreat forces him to phase
@@ -1583,7 +1591,7 @@ return function(rig : Model)
         -- Announcing death
         if rig:GetAttribute("Health") == 0 then
             CommsService:GlobalSubtitle("PNDR-4075 neutralized successfully", Color3.fromRGB(0, 255, 0), true)
-            _G.Knit.GetService("StraySoundService"):PlaySound("GlobalAnn")
+            _G.Knit.GetService("StraySoundService"):GlobalSound("GlobalAnn")
         end
 
         if rig then

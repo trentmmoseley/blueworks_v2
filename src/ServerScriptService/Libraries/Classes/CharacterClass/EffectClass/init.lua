@@ -23,12 +23,26 @@ end
 
 -- Checks if effect exists
 function EffectClass:Check(effect : string) : boolean
-    return self.Effects[effect] ~= nil and os.clock() < self.Effects[effect][1]
+    return self.Effects[effect] ~= nil and workspace:GetServerTimeNow() < self.Effects[effect][1]
+end
+
+-- Gets effect info
+function EffectClass:Get(effect : string) : {}?
+    return self.Effects[effect]
 end
 
 -- Adds effect
 function EffectClass:Add(effect : string, duration : number?, strength : number?)
-    self.Effects[effect] = {os.clock() + duration, strength or 1} -- expiry time, strength
+    strength = strength or 1
+
+    -- Stacks onto an active effect: extends its remaining time and boosts its strength
+    if self:Check(effect) then
+        self.Effects[effect][1] += duration
+        self.Effects[effect][2] = math.max(self.Effects[effect][2], strength)
+        return
+    end
+
+    self.Effects[effect] = {workspace:GetServerTimeNow() + duration, strength} -- expiry time, strength
     local EffectModule = script:FindFirstChild(effect)
 
     if EffectModule then
@@ -37,7 +51,7 @@ function EffectClass:Add(effect : string, duration : number?, strength : number?
 
         local Connection = nil
         Connection = RunService.PreSimulation:Connect(function(dt)
-            if not (self.CharacterClass and self.CharacterClass.Character and self.CharacterClass.Character:FindFirstAncestor("Workspace") and script:FindFirstChild(effect) and self.Effects[effect]) or os.clock() >= self.Effects[effect][1] then
+            if not (self.CharacterClass and self.CharacterClass.Character and self.CharacterClass.Character:FindFirstAncestor("Workspace") and script:FindFirstChild(effect) and self.Effects[effect]) or workspace:GetServerTimeNow() >= self.Effects[effect][1] then
                 EffectClass.onEnd(self.CharacterClass)
                 
                 if self and self.Remove then
@@ -47,7 +61,7 @@ function EffectClass:Add(effect : string, duration : number?, strength : number?
                 Connection:Disconnect()
                 Connection = nil
             else
-                EffectClass.onUpdate(self.CharacterClass, dt)
+                EffectClass.onUpdate(self.CharacterClass, dt, self.Effects[effect][2])
             end
         end)
     end

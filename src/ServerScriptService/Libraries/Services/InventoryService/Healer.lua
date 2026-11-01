@@ -47,7 +47,7 @@ function Healer.initItem(item, char)
 		end
 
 		-- Refuses to heal if the stat is already at its maximum
-		if not StatClass or (char:GetAttribute(ItemInfo.HealStat) >= char:GetAttribute(`Max{ItemInfo.HealStat}`) and not hasEffect) then
+		if not StatClass or (char:GetAttribute(ItemInfo.HealStat) >= char:GetAttribute(`Max{ItemInfo.HealStat}`) and not hasEffect and not ItemInfo.Gives) then
 			if UsingPlayer then
 				CommsService:SendSubtitle(nil, UsingPlayer, `{ItemInfo.HealStat} is already stable`, "Red")
 			end
@@ -73,7 +73,8 @@ function Healer.initItem(item, char)
 		end)
 
 		local useSuccess = ItemInfo.UseLength == 0 or CAS:ChargedAction(char, "HealerUse", ItemInfo.UseLength, function()
-			return char:GetAttribute(ItemInfo.HealStat) < char:GetAttribute(`Max{ItemInfo.HealStat}`)
+			-- Items that grant effects are used at will, regardless of their stat
+			return ItemInfo.Gives ~= nil or char:GetAttribute(ItemInfo.HealStat) < char:GetAttribute(`Max{ItemInfo.HealStat}`)
 		end)
 
 		-- The charged action has resolved (success or interruption): stop the char animation
@@ -90,8 +91,9 @@ function Healer.initItem(item, char)
 			ScoreService:AwardScore(char, 15, "Healed self", true)
 
 			if UsingPlayer then
-				VFXService:PlayVFX(UsingPlayer, "HealEffect", "Heal", char.PrimaryPart.CFrame, Color3.fromRGB(100, 255, 100))
-				SSService:PlaySound(UsingPlayer, item.Name)
+				VFXService:PlayVFX(UsingPlayer, "HealEffect", "Heal", char.PrimaryPart.CFrame, ItemInfo.TintColor)
+				-- Strips any "X-Grade " prefix so the use sound is found by base name
+				SSService:PlaySound(UsingPlayer, ItemInfo.Name:gsub("^%a+%-Grade ", ""))
 			end
 
 			if ItemInfo.simulateBandage then
@@ -105,8 +107,8 @@ function Healer.initItem(item, char)
 			end
 
 			if ItemInfo.Gives then
-				for effect, duration in pairs(ItemInfo.Gives) do
-					EffectService:Add(char, effect, duration)
+				for effect, info in pairs(ItemInfo.Gives) do
+					EffectService:Add(char, effect, info[1], info[2])
 				end
 			end
 

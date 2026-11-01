@@ -1,4 +1,5 @@
 -- Services
+local Players         = game:GetService("Players")
 local RepStorage      = game:GetService("ReplicatedStorage")
 local RunService      = game:GetService("RunService")
 
@@ -6,7 +7,7 @@ local RunService      = game:GetService("RunService")
 local Knit            = require(RepStorage.Packages.Knit)
 local RoundService    = Knit.CreateService({
     Name = "RoundService",
-    Client = {}
+    Client = {},
 })
 
 local GameValues      = RepStorage.GameValues
@@ -16,6 +17,55 @@ local TimeLeft        = GameValues.Numbers.TimeLeft
 -- Vars and consts
 local TIME_LIMITS     = {
     Classic           = 60 * 15
+}
+
+local RESULT_MSGS     = {
+    Squadmates        = {
+        Color = Color3.fromRGB(0, 255, 0),
+        Messages = {
+            "All P.N.D.R. Subjects neutralized",
+            "The area has been declared safe",
+            {
+                "Good job.",
+                "Great work.",
+                "A job well done.",
+                "Mission accomplished.",
+                "Mission complete.",
+                "Excellent work.",
+                "We have a great team here.",
+                "Operation completion.",
+                "You are now clear for extraction.",
+                "Extraction arrives soon.",
+                "Report to perimeter for extraction.",
+                "Commence recontainment efforts.",
+                "Well done, y'all.",
+                "Good work, team.",
+                "Good work, everyone.",
+                "Great job.",
+                "Excellent job.",
+                "Begin recontainment.",
+            }
+        }
+    },
+    Subjects         = {
+        Color = Color3.fromRGB(255, 0, 0),
+        Messages = {
+            "Contact with all Squadmates lost",
+            "Presence of P.N.D.R. Subjects reconfirmed",
+            {
+                "Lockdown for all citizens within twenty-five mile radius initiated.",
+				"Shelter-in-place order for state declared.",
+                "Area of interest expanded by twenty-five miles.",
+                "Mission aborted.",
+                "Mission has been declared a failure.",
+                "Mission failed.",
+                "Mission failure.",
+                "Operation failure.",
+                "Operation aborted.",
+                "Operation has been declared a failure.",
+            },
+        }
+    }
 }
 
 -- [[ funcs ]] --
@@ -83,11 +133,30 @@ function RoundService:Classic() : (string, string)
 
     repeat task.wait() until not MainConn
 
+    -- Announces result
+	if RESULT_MSGS[Winner] then
+		self.StraySoundService:GlobalSound("GlobalAnn")
+		for i, msg in ipairs(RESULT_MSGS[Winner]["Messages"]) do
+			local UsedMsg = i < 3 and msg or msg[math.random(1, #msg)]
+			local UsedColor = i < 3 and Color3.fromHSV(0, 0, 1) or RESULT_MSGS[Winner]["Color"]
+
+			for _, plr in pairs(Players:GetPlayers()) do
+				if plr.Team ~= game.Teams.Spectators and (plr.Team == game.Teams.Subjects or TimeLeft.Value > 0) then
+					self.CommsService:SendSubtitle(nil, plr, UsedMsg, UsedColor)
+				end
+			end
+
+			task.wait(1)
+		end
+	end
+
     return Winner, Outcome
 end
 
 function RoundService:KnitInit()
     self.TeamService = _G.Knit.GetService("TeamService")
+    self.CommsService = _G.Knit.GetService("CommsService")
+    self.StraySoundService = _G.Knit.GetService("StraySoundService")
 end
 
 return RoundService

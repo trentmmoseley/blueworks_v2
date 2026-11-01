@@ -30,7 +30,7 @@ local POSITIVITIES   = {
 -- Updates UI
 local function updateUI(effects)
     for _, effect in Queue:GetChildren() do
-        if effect:IsA("Frame") and (not effects[effect.Name] or effects[effect.Name][1] < os.clock()) then
+        if effect:IsA("Frame") and (not effects[effect.Name] or effects[effect.Name][1] < workspace:GetServerTimeNow()) then
             effect:Destroy()
         end
     end
@@ -42,7 +42,7 @@ local function updateUI(effects)
             NewFrame.Name = effect
 
             local EffectInfo = EffectIDs[effect]
-            NewFrame.EffectName.Text = string.upper(effect)
+            NewFrame.EffectName.Text = string.upper(effect).." "..(effects[effect][2] > 1 and effects[effect][2] or "")
             NewFrame.EffectName.TextColor3 = POSITIVITIES[EffectInfo["Positivity"]]
 
             NewFrame.ImageLabel.Image = "rbxassetid://"..EffectInfo["Image"]
@@ -51,6 +51,9 @@ local function updateUI(effects)
             NewFrame.ImageLabel.BackgroundColor3 = EffectInfo["Colors"]["Secondary"]
 
             NewFrame.Parent = Queue
+        else
+            -- Refreshes strength display when an existing effect is re-applied
+            FoundFrame.EffectName.Text = string.upper(effect).." "..(effects[effect][2] > 1 and effects[effect][2] or "")
         end
     end
 end
@@ -66,7 +69,7 @@ function EffectGui.Function()
         for _, frame in TheGui.Frame.Queue:GetChildren() do
             local EffectInfo = Effects[frame.Name]
             if EffectInfo then
-                local TimeLeft = EffectInfo[1] - os.clock()
+                local TimeLeft = EffectInfo[1] - workspace:GetServerTimeNow()
                 if TimeLeft > 0 then
                     if TimeLeft < 3600 then
                         frame.Timer.Text = math.floor(TimeLeft)..":"..string.format("%.2i", math.floor(60 * (TimeLeft % 1)))
