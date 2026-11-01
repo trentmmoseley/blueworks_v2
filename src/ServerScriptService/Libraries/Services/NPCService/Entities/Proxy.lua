@@ -101,6 +101,11 @@ local ATTACK_INTERVAL = 3/4
 -- while chasing sends him into a Retreat so he re-paths instead of staying stuck
 local CHASE_TIMEOUT   = 20
 
+-- General anti-softlock: staying within STUCK_DISTANCE of the same spot for this
+-- long means pathfinding has wedged him, so he teleports to a random patrol point
+local STUCK_TIMEOUT  = 5
+local STUCK_DISTANCE = 2 -- studs of displacement that still count as the same spot
+
 local DODGE_MAX_CHANCE       = 0.1 -- dodge chance once every Node is calibrated (0% when none are)
 local DODGE_DISTANCE_PERCENT = 3/4  -- teleports to this fraction of his distance from the target
 local DODGE_ANGLE_RANGE      = math.rad(30) -- how far around the target he may land from his current bearing
@@ -183,6 +188,8 @@ return function(rig : Model)
         local PreviousPatrolTarget = nil
         local SensedTarget = nil
         local StalkStart = 0
+        local StuckPosition : Vector3 = rig.PrimaryPart.CFrame.Position
+        local StuckStart = os.clock()
         local StalkTeleportCFrame : CFrame? = nil
         local StalkDetectedTargets = {}
         local TimeSinceUpdate = 0
@@ -1361,6 +1368,36 @@ return function(rig : Model)
             CloakAmbience.Volume = os.clock() >= NextRetreatExit and 1/2 or 0
         end
 
+        -- Anti-softlock: if he has not left a small radius for STUCK_TIMEOUT seconds
+        -- he is wedged on the map, so he teleports to a random patrol point and
+        -- re-paths from there instead of standing still
+        local function checkStuck()
+            local Position = rig.PrimaryPart.CFrame.Position
+
+            -- Standing still is the grab-drain mechanic itself (he is welded to his
+            -- victim), not a softlock, so CARRY never counts as stuck
+            if CurrentState == "CARRY" or (Position - StuckPosition).Magnitude > STUCK_DISTANCE then
+                StuckPosition = Position
+                StuckStart = os.clock()
+                return
+            end
+
+            if os.clock() - StuckStart < STUCK_TIMEOUT then
+                return
+            end
+
+            local PatrolPoint = pickPatrolPoint(PreviousPatrolTarget)
+            PreviousPatrolTarget = PatrolPoint
+            CurrentPatrolTarget = PatrolPoint
+            PatrolTargetStart = os.clock()
+
+            rig:PivotTo(PatrolPoint.CFrame)
+            LastPosition = PatrolPoint.CFrame.Position
+            StuckPosition = PatrolPoint.CFrame.Position
+            StuckStart = os.clock()
+            NextPathRun = 0 -- re-paths from the new position on the next tick
+        end
+
         LoadedAnims.Hold:Play()
 
         -- Initial spawning
@@ -1407,6 +1444,8 @@ return function(rig : Model)
             elseif CurrentState == "RETREAT" then
                 retreat()
             end
+
+            checkStuck()
 
             -- Healing
             RigClass.HealthClass:Increment((NodesLeft.Value > 0 and HEAL_RATES[CurrentState] or -5) * dt)
