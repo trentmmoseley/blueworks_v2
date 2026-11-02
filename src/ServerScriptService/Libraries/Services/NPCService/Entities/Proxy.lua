@@ -265,7 +265,9 @@ return function(rig : Model)
             end
             EndgameBuffed = true
 
-            rig:SetAttribute("Health", math.max(rig:GetAttribute("Health"), rig:GetAttribute("MaxHealth") * 0.8))
+            rig:SetAttribute("Health", rig:GetAttribute("MaxHealth"))
+            Limit = 0
+            MaxLimit *= 2
         end
 
         -- Cornered: with every Node calibrated and little health left, he can no
@@ -1563,8 +1565,10 @@ return function(rig : Model)
         -- Dodges and locks onto the attacker whenever attacked; rolling the dodge
         -- through this signal (which only real damaging attacks fire) keeps the
         -- endgame health drain from triggering dodges on its own
+        local PrevHealth = rig:GetAttribute("Health")
         CombatService.CharacterAttacked:Connect(function(attacker : Model | Player, target)
-            if not attacker or target ~= rig or (rig:GetAttribute("Health") or 0) <= 0 then
+            local Health = rig:GetAttribute("Health")
+            if not attacker or target ~= rig or (Health or 0) <= 0 then
                 return
             end
 
@@ -1577,17 +1581,17 @@ return function(rig : Model)
                 Awareness = 3
                 updateDetection()
             end
+
+            -- Limit
+            local DamageTaken = math.max(PrevHealth - Health, 0)
+            Limit += DamageTaken
+            TotalDamage += DamageTaken
         end)
 
         -- Limit
         local Killed = false
-        local PrevHealth = rig:GetAttribute("Health")
         rig:GetAttributeChangedSignal("Health"):Connect(function()
             local Health = rig:GetAttribute("Health")
-            local DamageTaken = math.max(PrevHealth - Health, 0)
-            Limit += DamageTaken
-            TotalDamage += DamageTaken
-
             -- With every Node calibrated there is no more retreating: zero health
             -- kills him for good (Killed guards against InstaKill re-firing this signal)
             if Health == 0 and NodesLeft.Value == 0 and not Killed then
