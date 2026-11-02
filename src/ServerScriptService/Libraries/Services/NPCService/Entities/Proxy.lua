@@ -156,6 +156,7 @@ return function(rig : Model)
     task.spawn(function()
         -- Vars and consts
         local Awareness = 0 -- 0 = unaware, 1 = sensing, 2 = following, 3 = chase
+        local ChaseAnchorDistance : number? = nil -- distance to the chased target when the current timeout window began
         local CurrentPatrolCount = 0
         local CurrentPatrolTarget : Part? = pickPatrolPoint()
         local PatrolTargetStart = os.clock() -- when the current patrol target was picked
@@ -1237,6 +1238,7 @@ return function(rig : Model)
             end
 
             local DistanceFromTarget = (SensedTarget.PrimaryPart.CFrame.Position - rig.PrimaryPart.CFrame.Position).Magnitude
+            ChaseAnchorDistance = ChaseAnchorDistance or DistanceFromTarget
             if DistanceFromTarget >= CHARGE_MIN_DISTANCE and RoundService:NodeProgress() >= CHARGE_NODE_PROGRESS
                 and os.clock() >= NextCharge and startCharge() then
                 return
@@ -1245,6 +1247,14 @@ return function(rig : Model)
             -- Endgame anti-softlock: if he has landed no attack for too long while
             -- chasing, he retreats and re-paths instead of staying stuck on the map
             if NodesLeft.Value == 0 and os.clock() - LastAttack >= CHASE_TIMEOUT then
+                -- Closing in on the target is progress, not a softlock: re-anchor the
+                -- distance and grant another full window instead of retreating
+                if DistanceFromTarget < ChaseAnchorDistance then
+                    ChaseAnchorDistance = DistanceFromTarget
+                    LastAttack = os.clock()
+                    return
+                end
+
                 if retreatBlocked() then
                     -- Too weak to phase out: breaks the softlock by teleporting to a
                     -- random patrol point, then keeps chasing from there
@@ -1252,6 +1262,7 @@ return function(rig : Model)
                     rig:PivotTo(CurrentPatrolTarget.CFrame)
                     LastPosition = rig.PrimaryPart.CFrame.Position
                     LastAttack = os.clock()
+                    ChaseAnchorDistance = nil
                     NextPathRun = 0
                 else
                     enterRetreat()
@@ -1288,6 +1299,7 @@ return function(rig : Model)
                         -- the LookVector, i.e. anywhere in the 180 degree arc in front
                         if Offset.Magnitude < 6 and Offset.Unit:Dot(LookVector) >= 0 then
                             LastAttack = os.clock()
+                            ChaseAnchorDistance = nil -- re-anchors at the post-attack distance on the next tick
                             PlaySound(HIT_SOUNDS[math.random(1, #HIT_SOUNDS)], "Hit", char.PrimaryPart, nil, 1, Rand:NextNumber(0.95, 1.05))
                             CombatService:Damage(rig, char, math.random(20, 25) * Lerp(1, aggroLevel(), 1/2.5), "PROXY_1", "DEFAULT", true, char.Torso, {})
 
@@ -1418,6 +1430,9 @@ return function(rig : Model)
 
             -- Dead for good: stays frozen as a corpse until HealthService's cleanup removes the rig
             if Humanoid.Health <= 0 or (rig:GetAttribute("Health") <= 0 and NodesLeft.Value == 0) then
+                -- Zeroes every target's detection level so no stale indicators linger
+                resetAwareness()
+                clearStalkDetection()
                 LifeConn:Disconnect()
                 LifeConn = nil
                 return
@@ -1446,6 +1461,11 @@ return function(rig : Model)
             end
 
             checkStuck()
+
+            -- The chase progress anchor only means something while chasing
+            if CurrentState ~= "CHASE" then
+                ChaseAnchorDistance = nil
+            end
 
             -- Healing
             RigClass.HealthClass:Increment((NodesLeft.Value > 0 and HEAL_RATES[CurrentState] or -5) * dt)
