@@ -1470,7 +1470,7 @@ return function(rig : Model)
             end
 
             -- Healing
-            RigClass.HealthClass:Increment((NodesLeft.Value > 0 and HEAL_RATES[CurrentState] or -5) * dt)
+            RigClass.HealthClass:Increment((NodesLeft.Value > 0 and HEAL_RATES[CurrentState] or (CurrentState ~= "RETREAT" and -4 or 0)) * dt)
 
             -- Animations
             if CurrentState ~= "CHARGE" and LoadedAnims.Charge.IsPlaying then
