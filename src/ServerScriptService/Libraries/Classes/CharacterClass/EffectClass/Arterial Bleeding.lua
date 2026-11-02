@@ -12,7 +12,7 @@ end
 
 function AB.onUpdate(charclass, dt)
     -- This function is called every frame while the effect class is active
-    charclass.HealthClass:Damage(TrigWave("sin", 1/2, 6, os.clock(), 0, 1/2) ^ 10 / 50, true)
+    charclass.HealthClass:Damage(TrigWave("sin", 0.6993, 6, os.clock(), 0, 1/2) ^ 10, true)
 
     local shedsBlood = math.random(0, 1000) == 0
     local PrimaryPart = charclass.Character.PrimaryPart
