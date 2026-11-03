@@ -1,5 +1,6 @@
 -- Services
 local Players         = game:GetService("Players")
+local PathService     = game:GetService("PathfindingService")
 local Rand            = Random.new()
 local RepStorage      = game:GetService("ReplicatedStorage")
 local RunService      = game:GetService("RunService")
@@ -24,6 +25,10 @@ local WeldPiece       = require(RepStorage.Modules.Util.WeldPiece)
 -- Vars and consts
 local PATROL_INTERVAL = 3
 local PATROL_TIMEOUT  = 30 -- seconds before an unreachable patrol point is skipped
+
+-- Hunt: each completed patrol may instead send him toward a random player's logged
+-- position; the chance scales with Node progress (0% at start, 100% once none are left)
+local HUNT_ATTEMPTS   = 5 -- random players tried for a reachable position before falling back to a patrol point
 
 local ANIMS         = {
     ["Idle"]        = {91585323243859, Enum.AnimationPriority.Idle},
@@ -159,6 +164,8 @@ return function(rig : Model)
         local ChaseAnchorDistance : number? = nil -- distance to the chased target when the current timeout window began
         local CurrentPatrolCount = 0
         local CurrentPatrolTarget : Part? = pickPatrolPoint()
+        local CurrentHuntPosition : Vector3? = nil -- a player's logged position, patrolled to like a patrol point
+        local PickingDestination = false -- re-entry guard: pickHuntPosition yields while a path computes
         local PatrolTargetStart = os.clock() -- when the current patrol target was picked
         local CurrentState = "PATROL"
         local ChargeStart = 0
@@ -205,6 +212,7 @@ return function(rig : Model)
         -- Sets stuff up
         local LifeConn : RBXScriptConnection
         local Path = SimplePath.new(rig)
+        local HuntPath = PathService:CreatePath() -- reachability probe for logged player positions
 
         local ChargeRayParams = RaycastParams.new()
         ChargeRayParams.FilterType = Enum.RaycastFilterType.Exclude
@@ -267,7 +275,7 @@ return function(rig : Model)
 
             rig:SetAttribute("Health", rig:GetAttribute("MaxHealth"))
             Limit = 0
-            MaxLimit *= 2
+            MaxLimit *= 1.5
         end
 
         -- Cornered: with every Node calibrated and little health left, he can no
@@ -345,6 +353,40 @@ return function(rig : Model)
             end
 
             return NearestTarget, NearestDistance
+        end
+
+        -- Hunt roll: instead of a set patrol point he may log a random player's current
+        -- position and path to it like a patrol point (he never pursues the player; the
+        -- position is frozen the moment it is logged). The odds scale with Node progress,
+        -- from 0% at round start to 100% once every Node is calibrated. The position is
+        -- only kept when a full path to it computes; if no random player is reachable he
+        -- falls back to a patrol point, so he never heads somewhere he cannot walk to
+        local function pickHuntPosition() : Vector3?
+            if Rand:NextNumber() >= RoundService:NodeProgress() then
+                return nil
+            end
+
+            local Candidates = {}
+            for _, char in getValidTargets() do
+                if Players:GetPlayerFromCharacter(char) then
+                    table.insert(Candidates, char)
+                end
+            end
+
+            for _ = 1, math.min(#Candidates, HUNT_ATTEMPTS) do
+                local Target = table.remove(Candidates, Rand:NextInteger(1, #Candidates))
+                local Position = Target.PrimaryPart.CFrame.Position
+
+                local Computed = pcall(function()
+                    HuntPath:ComputeAsync(rig.PrimaryPart.CFrame.Position, Position)
+                end)
+
+                if Computed and HuntPath.Status == Enum.PathStatus.Success then
+                    return Position
+                end
+            end
+
+            return nil
         end
 
         -- Detecting player via Noise and Sight
@@ -1051,27 +1093,51 @@ return function(rig : Model)
         end
 
         local function patrol(dt)
-            if not CurrentPatrolTarget then
-            CurrentPatrolTarget = pickPatrolPoint(PreviousPatrolTarget)
-            PatrolTargetStart = os.clock()
+            -- A patrol point handed over by another state supersedes any logged position
+            if CurrentPatrolTarget then
+                CurrentHuntPosition = nil
+            end
+
+            -- Picks the next destination: a hunt roll may log a player's position instead
+            -- of a set patrol point, falling back to a patrol point when none is reachable
+            if not CurrentPatrolTarget and not CurrentHuntPosition and not PickingDestination then
+                PickingDestination = true
+                CurrentHuntPosition = pickHuntPosition()
+                PickingDestination = false
+
+                if CurrentState ~= "PATROL" then
+                    return
+                end
+
+                if not CurrentHuntPosition then
+                    CurrentPatrolTarget = pickPatrolPoint(PreviousPatrolTarget)
+                end
+                PatrolTargetStart = os.clock()
             end
 
             TimeSinceUpdate += dt
 
             if os.clock() >= NextPathRun then
                 NextPathRun = os.clock() + 1/4
-                Path:Run((Awareness < 2 or not isValidTarget(SensedTarget)) and CurrentPatrolTarget.CFrame.Position or SensedTarget.PrimaryPart.CFrame.Position)
+
+                local Destination = CurrentHuntPosition or (CurrentPatrolTarget and CurrentPatrolTarget.CFrame.Position)
+                if not Destination then
+                    return
+                end
+
+                Path:Run((Awareness < 2 or not isValidTarget(SensedTarget)) and Destination or SensedTarget.PrimaryPart.CFrame.Position)
                 if CurrentState ~= "PATROL" then
                     return
                 end
 
                 -- Choose new target if destination reached; if it cannot be reached within
                 -- thirty seconds, move on to the next as if it had been reached
-                local Distance = (rig.PrimaryPart.CFrame.Position - CurrentPatrolTarget.CFrame.Position).Magnitude
+                local Distance = (rig.PrimaryPart.CFrame.Position - Destination).Magnitude
                 local ReachedPatrolPoint = Distance < 6
                 if ReachedPatrolPoint or os.clock() - PatrolTargetStart >= PATROL_TIMEOUT then
-                    PreviousPatrolTarget = CurrentPatrolTarget
+                    PreviousPatrolTarget = CurrentPatrolTarget or PreviousPatrolTarget
                     CurrentPatrolTarget = nil
+                    CurrentHuntPosition = nil
                     CurrentPatrolCount += 1
 
                     if CurrentPatrolCount >= 3 then
@@ -1334,6 +1400,7 @@ return function(rig : Model)
         local function endRetreat()
             PreviousPatrolTarget = CurrentPatrolTarget
             CurrentPatrolTarget  = nil
+            CurrentHuntPosition  = nil -- a logged position from before the retreat is too stale to keep
             CurrentState         = "PATROL"
 
             RigClass.HealthClass.canBeAttacked = true
