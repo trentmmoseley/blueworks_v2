@@ -12,7 +12,10 @@ local RoundService    = Knit.CreateService({
 
 local GameValues      = RepStorage.GameValues
 local NodesLeft       = GameValues.Numbers.NodesLeft
+local Status          = GameValues.Strings.Status
 local TimeLeft        = GameValues.Numbers.TimeLeft
+
+local ResultsScreen   = require(RepStorage.Remotes.ResultsScreen)
 
 -- Vars and consts
 local TIME_LIMITS     = {
@@ -77,6 +80,7 @@ end
 
 -- Main round loop
 function RoundService:Classic() : (string, string)
+    Status.Value = "Mission in progress"
     local Winner, Outcome = "", ""
 
     local TimeElapsed = 0
@@ -150,6 +154,8 @@ function RoundService:Classic() : (string, string)
 		end
 	end
 
+    Status.Value = "Mission over"
+    ResultsScreen:FireAll(Winner, Outcome)
     return Winner, Outcome
 end
 
