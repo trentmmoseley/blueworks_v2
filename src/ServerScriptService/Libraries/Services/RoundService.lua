@@ -47,7 +47,11 @@ local RESULT_MSGS     = {
                 "Great job.",
                 "Excellent job.",
                 "Begin recontainment.",
-            }
+                "We did it, y'all.",
+                "You did good.",
+                "Mission completion.",
+                "Mission success."
+.            }
         }
     },
     Subjects         = {
