@@ -102,7 +102,7 @@ function MovementLocal.Function()
             HRP = Character.PrimaryPart
             if not Humanoid or not HRP or Humanoid:GetState() == Enum.HumanoidStateType.Dead then return end
 
-            if Character:GetAttribute("isGrabbed") == true then
+            if Character:GetAttribute("isGrabbed") == true or Player:GetAttribute("ResultsActive") == true then
                 CurrentVelocity = Vector3.zero
                 MobileInput = Vector2.zero
                 Character:SetAttribute("rawInputDetected", false)

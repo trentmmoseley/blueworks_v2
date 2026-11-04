@@ -143,6 +143,7 @@ end
 
 -- New subsitle
 function CommsGui.newSubtitle(text, color)
+    if Player:GetAttribute("ResultsActive") then return end -- don't show subtitles during results
     task.spawn(function()
         local NewSubtitle : TextLabel = Subtitles.UIListLayout.Subtitle:Clone()
         NewSubtitle.Text = ""
@@ -169,6 +170,17 @@ function CommsGui.newSubtitle(text, color)
         TweenService:Create(NewSubtitle, TweenInfo.new(VanishTime), {TextTransparency = 1, TextStrokeTransparency = 1}):Play()
         Debris:AddItem(NewSubtitle, VanishTime)
     end)
+end
+
+-- Clears the subtitles queue
+function CommsGui.clearSubtitles()
+    SubCounter += MAX_SUBS -- forces queued subtitles to vanish
+
+    for _, sub : TextLabel in Subtitles:GetChildren() do
+        if sub:IsA("TextLabel") then
+            sub:Destroy()
+        end
+    end
 end
 
 -- Updates radio

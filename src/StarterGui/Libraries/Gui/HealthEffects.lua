@@ -80,6 +80,8 @@ function HEALTHEffects.Function()
     TheGui.Enabled = Player.Team ~= game.Teams.Spectators
     if TheGui.Enabled then
         local RunConn = RunService.PreRender:Connect(function(dt)
+            if Player:GetAttribute("ResultsActive") == true then return end
+
             local QuarterLerp = LerpByFrame(1/4, dt)
             local Percentage = Character:GetAttribute("Health") / Character:GetAttribute("MaxHealth")
 

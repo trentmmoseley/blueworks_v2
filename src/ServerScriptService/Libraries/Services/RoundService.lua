@@ -15,7 +15,7 @@ local NodesLeft       = GameValues.Numbers.NodesLeft
 local Status          = GameValues.Strings.Status
 local TimeLeft        = GameValues.Numbers.TimeLeft
 
-local ResultsScreen   = require(RepStorage.Remotes.ResultsScreen)
+local ResultsScreen   = require(RepStorage.Remotes.ResultsScreen):Server()
 
 -- Vars and consts
 local TIME_LIMITS     = {
@@ -155,6 +155,30 @@ function RoundService:Classic() : (string, string)
 	end
 
     Status.Value = "Mission over"
+
+    -- Prepares players for the results screen: freezes them, disables NV and clears effects
+    for _, plr in Players:GetPlayers() do
+        if plr.Team ~= game.Teams.Spectators then
+            plr:SetAttribute("ResultsActive", true)
+
+            local Character = plr.Character
+            local CharClass = Character and self.CharService:GetCharacterClass(Character)
+
+            if CharClass then
+                local NVClass = CharClass.NVClass
+                if NVClass and NVClass.doNightVision then
+                    NVClass:Toggle(false)
+                end
+
+                if CharClass.EffectClass then
+                    for effect, _ in CharClass.EffectClass.Effects do
+                        self.EffectService:Remove(Character, effect)
+                    end
+                end
+            end
+        end
+    end
+
     ResultsScreen:FireAll(Winner, Outcome)
     return Winner, Outcome
 end
@@ -163,6 +187,20 @@ function RoundService:KnitInit()
     self.TeamService = _G.Knit.GetService("TeamService")
     self.CommsService = _G.Knit.GetService("CommsService")
     self.StraySoundService = _G.Knit.GetService("StraySoundService")
+    self.CharService = _G.Knit.GetService("CharService")
+    self.EffectService = _G.Knit.GetService("EffectService")
+
+    -- Results state ends when the character is reloaded
+    local function watchPlayer(plr : Player)
+        plr.CharacterAdded:Connect(function()
+            plr:SetAttribute("ResultsActive", false)
+        end)
+    end
+
+    Players.PlayerAdded:Connect(watchPlayer)
+    for _, plr in Players:GetPlayers() do
+        watchPlayer(plr)
+    end
 end
 
 return RoundService

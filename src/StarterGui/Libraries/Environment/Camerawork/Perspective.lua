@@ -54,6 +54,13 @@ function Perspective.Function(dt)
         return
     end
 
+    -- While results are showing the ResultsGui module owns the camera; Classic mode frees the mouse
+    if Player:GetAttribute("ResultsActive") == true then
+        Player.CameraMode = Enum.CameraMode.Classic
+        WasGrabbed = Grabbed
+        return
+    end
+
     if not Grabbed and (WasGrabbed or Camera.CameraType == Enum.CameraType.Scriptable) then
         restoreCamera()
     else
