@@ -1,6 +1,7 @@
 local ResultsGui     = {}
 
 -- Services
+local Lighting       = game:GetService("Lighting")
 local Players        = game:GetService("Players")
 local RepStorage     = game:GetService("ReplicatedStorage")
 local TweenService   = game:GetService("TweenService")
@@ -54,7 +55,7 @@ local GuiConns       = {}
 local WINNER_INFO    = {
     Squadmates       = {
         WinnerMSG    = "SQUADMATES WIN",
-        HowMSG       = "All P.N.D.R. Subjects neutralized",
+        HowMSG       = "All threats eliminated",
         Color        = Color3.fromRGB(0, 0, 255),
     },
     Subjects         = {
@@ -114,6 +115,7 @@ end
 function ResultsGui.Function()
     ResultsScreen:On(function(winner : string, how : string)
         if Player.Team == game.Teams.Spectators then return end
+        local WinnerInfo = WINNER_INFO[winner]
 
         ResultsShowing = true
         Player:SetAttribute("ResultsActive", true)
@@ -123,14 +125,27 @@ function ResultsGui.Function()
         Sounds.GameEvents.GlobalAnn:Play()
         TweenService:Create(MissionOver, TweenInfo.new(1), {TextTransparency = 0, TextStrokeTransparency = 1/2}):Play()
         task.wait(1)
+
+        local ResultsCC = Instance.new("ColorCorrectionEffect")
+        ResultsCC.Name = "ResultsCC"
+        ResultsCC.Parent = Lighting
+
         TweenService:Create(MissionOver, TweenInfo.new(1), {Size = UDim2.fromScale(0.345 / 2, 0.062 / 2), Position = UDim2.fromScale(0.5, 0.05)}):Play()
+        TweenService:Create(ResultsCC, TweenInfo.new(1), {Brightness = -0.7, Contrast = -2, TintColor = WinnerInfo.Color}):Play()
+
         tweenCameraToPOV()
         task.wait(1)
+
+        Winner.Text = WinnerInfo.WinnerMSG or winner
+        HowTheyWon.Text = WinnerInfo.HowMSG or how
 
         for _, part in {Winner, HowTheyWon, MissionOver, Leaderboard} do
             part.Visible = true
             _effects:CreateBuffer(part, 1)
         end
+
+        Sounds.Results[winner]:Play()
+        Sounds.Death.TurnOn:Play()
     end)
 
     -- Restores movement, UIs and the camera once the character is reloaded
