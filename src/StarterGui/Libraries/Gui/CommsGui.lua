@@ -5,11 +5,13 @@ local Debris         = game:GetService("Debris")
 local Players        = game:GetService("Players")
 local RepStorage     = game:GetService("ReplicatedStorage")
 local RunService     = game:GetService("RunService")
+local TCS            = game:GetService("TextChatService")
 local TweenService   = game:GetService("TweenService")
 local UIS            = game:GetService("UserInputService")
 
 local CommsService   = _G.Knit.GetService("CommsService")
 local DataController = _G.Knit.GetController("DataController")
+local EffectService  = _G.Knit.GetService("EffectService")
 local SetsService    = _G.Knit.GetService("SettingsService")
 
 -- Players
@@ -33,6 +35,10 @@ local RadioToggle    = Feed.RadioToggle
 local RadioObj       = RadioToggle.ViewportFrame.WorldModel.Radio
 
 local NameParts      = require(RepStorage.Modules.Util.NameParts)
+local EffectMsgs     = require(RepStorage.Modules.Data.Dialog.EffectMessages)
+
+local ProxChannel    = TCS:WaitForChild("Proximity")
+local GameValues     = RepStorage:WaitForChild("GameValues")
 
 -- Vars and consts
 local PHT_PLATFORM   = {["Desktop"] = "\"/\"", ["Mobile"] = "here", ["Console"] = "Button North"}
@@ -48,16 +54,41 @@ local SUB_LIFETIME   = 7
 
 local LTRS_PER_SEC   = 75
 
+local MAX_CHARS      = 135
+
 local WritingMsgs    = {}
+
+local LocalEffects   = {}
 
 local RADIO_DEF_CF   = RadioObj.PrimaryPart.CFrame
 
 local RADIO_OFF      = Color3.fromRGB(100, 0, 0)
 local RADIO_ON       = Color3.fromRGB(0, 255, 75)
 
+local TEAM_COLORS    = {
+    Spectators       = Color3.fromRGB(100, 121, 255),
+    Squadmates       = Color3.fromRGB(190, 188, 188),
+    Subjects         = Color3.fromRGB(121, 71, 178),
+}
+
 local onChatCD       = false
 
 -- [[ funcs ]] --
+
+-- Checks if a string is all blank
+local function checkIfAllSpaces(str)
+    return (str == "" or str == " " or #string.gsub(str, " ", "") == 0)
+end
+
+-- Removes duplicate spaces
+local function removeDupeSpaces(str)
+    return string.gsub(str, "%s%s+", " ")
+end
+
+-- Determines if the local player has an active effect
+local function hasEffect(effect : string) : boolean
+    return LocalEffects[effect] ~= nil and LocalEffects[effect][1] > workspace:GetServerTimeNow()
+end
 
 -- Writes placeholder text
 local function writePrompt()
@@ -91,7 +122,7 @@ function CommsGui.newMessage(sender, text, color, tp, radio)
 		    NewMessage.TextColor3 = Color3.fromRGB(0, 255, 150)
             TweenService:Create(NewMessage._static, TweenInfo.new(1/2), {ImageTransparency = 2/3}):Play()
         end
-        
+
         if sender and sender:IsA("Player") then
             -- Sound for own message
             if sender.Name == Player.Name then
@@ -107,13 +138,13 @@ function CommsGui.newMessage(sender, text, color, tp, radio)
                 NewMessage.Text = string.sub(Displayname, 1, i)
                 task.wait(1 / LTRS_PER_SEC)
             end
-        
+
             local SavedString = NewMessage.Text
             if Realname then
             for i = 1, #Realname do
                     NewMessage.Text = string.format(SavedString.."%s", string.format(" <font size = '10'>(@%s)</font>", string.sub(Realname, 1, i)))
                     task.wait(1 / LTRS_PER_SEC)
-                end 
+                end
             end
 
             NewMessage.Text = NewMessage.Text..": "
@@ -225,7 +256,7 @@ local function updateRadio()
     -- Sounds
     ChatSounds.RadioToggle.Click.PlaybackSpeed = radioOn and 1 or 0.9
     ChatSounds.RadioToggle.Click:Play()
-    
+
     if radioOn then
         ChatSounds.RadioStatic.Volume = 0.25
     end
@@ -248,7 +279,7 @@ function CommsGui.Function()
             end
         end
     end)
-    
+
     Player:GetAttributeChangedSignal("isChatting"):Connect(function()
         if Player:GetAttribute("isChatting") then
             ChatInput:CaptureFocus()
@@ -261,7 +292,7 @@ function CommsGui.Function()
         ChatInput.PlaceholderText = ""
         ChatInput.Text = ""
         TweenService:Create(ChatInput.Frame, TweenInfo.new(1/8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {BackgroundTransparency = 0.5, Size = UDim2.fromScale(1, 0.1)}):Play()
-        
+
         if Player:GetAttribute("radioOn") then
             ChatSounds.ChatToggle:Play()
         end
@@ -270,7 +301,16 @@ function CommsGui.Function()
     -- Sending message
     ChatInput.FocusLost:Connect(function(enterpressed)
         if enterpressed then
-            CommsService.MessageSend:Fire(ChatInput.Text)
+            local Message = removeDupeSpaces(string.sub(ChatInput.Text, 1, MAX_CHARS))
+
+            if not checkIfAllSpaces(Message) and not onChatCD then
+                -- Distorts message if delirious
+                if hasEffect("Delirium") then
+                    Message = EffectMsgs.Delirium[math.random(1, #EffectMsgs.Delirium)]
+                end
+
+                ProxChannel:SendAsync(Message)
+            end
         end
 
         ChatInput.Text = ""
@@ -282,23 +322,47 @@ function CommsGui.Function()
     -----------------------------------------------
 
     -- Receiving messages
-    CommsService.MessageReceive:Connect(function(sender : Player?, message : string, color : Color3, tp : number, radio : boolean)
-        if sender and sender ~= Player and sender.Team == game.Teams.Squadmates then
-            game:GetService("Chat"):Chat(sender.Character or sender.CharacterAdded:Wait(), message)
+    ProxChannel.MessageReceived:Connect(function(textChatMessage : TextChatMessage)
+        if textChatMessage.Status ~= Enum.TextChatMessageStatus.Success or not textChatMessage.TextSource then return end
+
+        local sender = Players:GetPlayerByUserId(textChatMessage.TextSource.UserId)
+        if not sender then return end
+
+        -- Changes message if confused
+        local Message = textChatMessage.Text
+        if hasEffect("Confusion") then
+            Message = EffectMsgs.Confusion[math.random(1, #EffectMsgs.Confusion)]
         end
 
-        if radio then
+        local Radio = sender:GetAttribute("radioOn") and Player:GetAttribute("radioOn")
+        local BothSpectators = sender.Team == game.Teams.Spectators and Player.Team == game.Teams.Spectators
+
+        -- Distance between characters (radio and spectator messages are always fully visible)
+        local Distance = 0
+        if not Radio and not BothSpectators then
+            local SenderChar = sender.Character
+            local RecipChar = Player.Character
+            Distance = (SenderChar and RecipChar and SenderChar.PrimaryPart and RecipChar.PrimaryPart)
+                and (RecipChar.PrimaryPart.Position - SenderChar.PrimaryPart.Position).Magnitude or math.huge
+        end
+
+        if Radio then
 			ChatSounds.TextReceive:Play()
             ChatSounds.RadioToggle.Beep:Play()
 			ChatSounds.RadioToggle.Static.Volume = 1
 		end
 
-        CommsGui.newMessage(sender, message, color, tp, radio)
+        CommsGui.newMessage(sender, Message, GameValues.Bools.doFriendlyFire.Value and TEAM_COLORS.Spectators or TEAM_COLORS[sender:GetAttribute("Team")], Distance, Radio)
     end)
 
     -- Receiving subtitles
     CommsService.SubtitleReceive:Connect(function(sender : Player?, message : string, color : Color3)
         CommsGui.newSubtitle(message, color)
+    end)
+
+    -- Tracks the local player's active effects for message distortion
+    EffectService.EffectUpdate:Connect(function(effects)
+        LocalEffects = effects
     end)
 
     -- Run service
@@ -330,7 +394,7 @@ function CommsGui.Function()
         if new then
             ChatSounds.Cooldown:Play()
         end
-        
+
         TweenService:Create(ChatInput, TweenInfo.new(1/4), {PlaceholderColor3 = Color3.fromHSV(1, new and 1/2 or 0, new and 1 or 0.7)}):Play()
     end)
 

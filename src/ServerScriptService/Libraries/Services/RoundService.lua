@@ -51,7 +51,7 @@ local RESULT_MSGS     = {
                 "You did good.",
                 "Mission completion.",
                 "Mission success."
-.            }
+            }
         }
     },
     Subjects         = {

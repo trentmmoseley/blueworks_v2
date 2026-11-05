@@ -34,6 +34,41 @@
       }
     },
 
+    "TextChatService": {
+      "$className": "TextChatService",
+      "$ignoreUnknownInstances": true,
+      "$properties": {
+        "ChatVersion": "TextChatService",
+        "CreateDefaultCommands": false,
+        "CreateDefaultTextChannels": false
+      },
+
+      "Proximity": {
+        "$className": "TextChannel"
+      },
+
+      "ChatWindowConfiguration": {
+        "$className": "ChatWindowConfiguration",
+        "$properties": {
+          "Enabled": false
+        }
+      },
+
+      "ChatInputBarConfiguration": {
+        "$className": "ChatInputBarConfiguration",
+        "$properties": {
+          "Enabled": false
+        }
+      },
+
+      "BubbleChatConfiguration": {
+        "$className": "BubbleChatConfiguration",
+        "$properties": {
+          "Enabled": true
+        }
+      }
+    },
+
     "Workspace": {
       "$properties": {
         "FilteringEnabled": true,

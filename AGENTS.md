@@ -10,7 +10,7 @@ The game includes projectile firearms, melee and unarmed combat, inventories and
 
 Key root files:
 
-- `default.project.json` — Rojo project. It maps `src/ReplicatedFirst`, `src/ReplicatedStorage`, `src/ServerScriptService`, `src/StarterGui`, and the two `src/StarterPlayer` folders into the DataModel. It also sets Workspace filtering/input properties and `SoundService.RespectFilteringEnabled`.
+- `default.project.json` — Rojo project. It maps `src/ReplicatedFirst`, `src/ReplicatedStorage`, `src/ServerScriptService`, `src/StarterGui`, and the two `src/StarterPlayer` folders into the DataModel. It also sets Workspace filtering/input properties and `SoundService.RespectFilteringEnabled`. It additionally configures `TextChatService`: `ChatVersion` is `TextChatService`, default channels/commands are disabled, a single `Proximity` `TextChannel` carries all player chat, the native chat window and input bar are disabled (the custom `CommsGui` feed is used instead), and native bubble chat is enabled.
 - `aftman.toml` — pinned tools: **Rojo 7.7.0**, **Wally 0.3.2**, and **Selene 0.29.0**, installed through Aftman.
 - `wally.toml` — direct Wally dependencies. `wally.lock` is generated and records the resolved versions; do not edit it manually.
 - `selene.toml` — Selene with the Roblox standard library and project-specific lint rule settings.
@@ -82,6 +82,8 @@ Two networking systems coexist:
 2. **Red remotes** — modules in `ReplicatedStorage/Remotes` use `script.Name` as the event/function name and are required through `:Server()` or `:Client()` where applicable. Examples include gun/melee/movement requests, hit detection, data replication, damage indicators, and respawning.
 
 Follow the networking mechanism already used by the surrounding domain rather than adding another transport.
+
+Player chat is a third, separate path: it must go through **TextChatService** (the legacy `Chat` service and manual `TextService` chat filtering are not used). `CommsGui` sends with `TextChannel:SendAsync` on the `Proximity` channel and renders the custom feed from `TextChannel.MessageReceived`; `CommsService` enforces proximity/team/radio delivery, cooldowns, and noise through `TextChannel.ShouldDeliverCallback` on the server. Game notifications ("subtitles") are not chat and still use `CommsService`'s Knit signals.
 
 ### Persistence and client data
 

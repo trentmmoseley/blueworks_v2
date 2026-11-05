@@ -8,21 +8,16 @@ local Knit              = require(RepStorage.Packages.Knit)
 local CommsService      = Knit.CreateService({
     Name                = "CommsService",
     Client              = {
-        MessageSend     = Knit.CreateSignal(),
-        MessageReceive  = Knit.CreateSignal(),
         SubtitleReceive = Knit.CreateSignal(),
         CooldownInit    = Knit.CreateSignal(),
     }
 })
 
-local EffectMsgs        = require(RepStorage.Modules.Data.Dialog.EffectMessages)
-
-local GameValues        = RepStorage:WaitForChild("GameValues")
+local ProxChannel       = TCS:WaitForChild("Proximity")
 
 -- Vars and consts
 local PlrCooldowns      = {}
 
-local MAX_CHARS         = 135
 local MAX_DIST          = 100
 
 local MSGS_PER_SEC      = 6
@@ -35,32 +30,20 @@ local MSG_COLORS        = {
     ["White"]           = Color3.fromRGB(255, 255, 255),
 }
 
-local TEAM_COLORS       = {
-    Spectators          = Color3.fromRGB(100, 121, 255),
-    Squadmates          = Color3.fromRGB(190, 188, 188),
-    Subjects            = Color3.fromRGB(121, 71, 178),
-}
+-- MessageStates[message] = whether the message was sent while on cooldown (blocked from delivery)
+local MessageStates     = {}
+
+-- ChatPairs[senderId][recipientId] = whether the sender is permitted to chat with the recipient
+local ChatPairs         = {}
 
 -- [[ funcs ]] --
 
--- Checks if a string is all blank
-local function checkIfAllSpaces(str)
-	return (str == "" or str == " " or #string.gsub(str, " ", "") == 0)
-end
-
--- Removes duplicate spaces
-local function removeDupeSpaces(str)
-	return string.gsub(str, "%s%s+", " ")
-end
-
 -- Determines if players can communicate
 function CommsService:playersCanChat(sender : Player, recipient : Player)
-    return TCS:CanUsersChatAsync(sender.UserId, recipient.UserId) and (sender.Team == recipient.Team or sender.Team ~= game.Teams.Spectators) and (sender:GetAttribute("inGame") == recipient:GetAttribute("inGame") or recipient.Team == game.Teams.Spectators)
-end
+    local PairCache = ChatPairs[sender.UserId]
+    local CanChat = if PairCache and PairCache[recipient.UserId] ~= nil then PairCache[recipient.UserId] else true
 
--- Sends message
-function CommsService:SendMessage(sender : Player, recipient : Player, message : string, color : string, distance : number, radio : boolean)
-    self.Client.MessageReceive:Fire(recipient, sender, message, GameValues.Bools.doFriendlyFire.Value and TEAM_COLORS.Spectators or TEAM_COLORS[color], distance, radio)
+    return CanChat and (sender.Team == recipient.Team or sender.Team ~= game.Teams.Spectators) and (sender:GetAttribute("inGame") == recipient:GetAttribute("inGame") or recipient.Team == game.Teams.Spectators)
 end
 
 -- Sends subtitle
@@ -77,22 +60,6 @@ function CommsService:GlobalSubtitle(message : string, color : Color3 | string, 
     end
 end
 
--- Filters string
-function CommsService:FilterString(str, plr) : string
-	local filteredstring
-	local success, errormessage = pcall(function()
-		filteredstring = game:GetService("TextService"):FilterStringAsync(str, plr.UserId, Enum.TextFilterContext.PublicChat)
-		filteredstring = filteredstring:GetNonChatStringForUserAsync(plr.UserId)
-	end)
-
-	if not success then
-		filteredstring = nil
-		warn("Problem filtering message: "..errormessage)
-	end
-
-	return filteredstring
-end
-
 -- Determines if player on cooldown
 function CommsService.Client:IsOnCooldown(plr : Player) : (boolean, number)
     local onCooldown = PlrCooldowns[plr.UserId] and PlrCooldowns[plr.UserId][2]
@@ -104,8 +71,35 @@ end
 -- On knit init completion
 function CommsService:KnitInit() : ()
     local CharService = Knit.GetService("CharService")
-    local EffectService = Knit.GetService("EffectService")
     self.TeamService = Knit.GetService("TeamService")
+
+    -- Returns the player's character if it's loaded into a playable team
+    local function getLoadedChar(plr : Player) : Model?
+        local Character = plr.Character
+        return (Character and Character:GetAttribute("Team") ~= "Spectators") and Character or nil
+    end
+
+    -- Determines if a recipient can hear a sender's message
+    local function canHear(sender : Player, recipient : Player) : boolean
+        if not self:playersCanChat(sender, recipient) then
+            return false
+        end
+
+        local bothSpectators = recipient.Team == game.Teams.Spectators and sender.Team == game.Teams.Spectators
+        local SenderChar     = getLoadedChar(sender)
+        local RecipChar      = getLoadedChar(recipient)
+        local Distance       = (SenderChar and RecipChar and SenderChar.PrimaryPart and RecipChar.PrimaryPart)
+            and (RecipChar.PrimaryPart.Position - SenderChar.PrimaryPart.Position).Magnitude or math.huge
+
+        return Distance <= MAX_DIST or (sender:GetAttribute("radioOn") and recipient:GetAttribute("radioOn")) or bothSpectators or recipient == sender
+    end
+
+    -- Returns a character's noise class without yielding
+    local function getNoiseClass(Character : Model?)
+        if Character and CharService.Characters[Character] then
+            return CharService:GetCharacterClass(Character).NoiseClass
+        end
+    end
 
     -- Manages cooldowns
     task.spawn(function()
@@ -129,81 +123,106 @@ function CommsService:KnitInit() : ()
         end
     end)
 
-    self.Client.MessageSend:Connect(function(player : Player, message : string)
-        local radioOn = player:GetAttribute("radioOn")
-        local inGame = self.TeamService:CharIsLoaded(player)
-        local Character = inGame and (player.Character or player.CharacterAdded:Wait()) or nil
+    -- Gates delivery of every chat message; runs once per recipient on the server
+    ProxChannel.ShouldDeliverCallback = function(textChatMessage : TextChatMessage, textSource : TextSource) : boolean
+        local sender = textChatMessage.TextSource and Players:GetPlayerByUserId(textChatMessage.TextSource.UserId)
+        local recipient = Players:GetPlayerByUserId(textSource.UserId)
+        if not sender or not recipient then
+            return true
+        end
 
-        if not checkIfAllSpaces(message) and (not PlrCooldowns[player.UserId] or not PlrCooldowns[player.UserId][2]) then
-            -- Manages cooldown
-            if not PlrCooldowns[player.UserId] then
-                PlrCooldowns[player.UserId] = {0, false}
-            end
-            PlrCooldowns[player.UserId][1] += 1
+        -- Once-per-message bookkeeping
+        if MessageStates[textChatMessage] == nil then
+            local onCooldown = PlrCooldowns[sender.UserId] ~= nil and PlrCooldowns[sender.UserId][2]
+            MessageStates[textChatMessage] = onCooldown
+            task.delay(30, function()
+                MessageStates[textChatMessage] = nil
+            end)
 
-            -- Turns on cooldown if message limit is reached
-            if PlrCooldowns[player.UserId][1] >= MSGS_PER_SEC then
-                PlrCooldowns[player.UserId][2] = true
-                self.Client.CooldownInit:Fire(player, true)
-            end
+            if not onCooldown then
+                -- Manages cooldown
+                if not PlrCooldowns[sender.UserId] then
+                    PlrCooldowns[sender.UserId] = {0, false}
+                end
+                PlrCooldowns[sender.UserId][1] += 1
 
-            -- Filters message
-            local ShortenedMessage = string.sub(message, 1, MAX_CHARS)
-            local FilteredMessage = self:FilterString(removeDupeSpaces(ShortenedMessage), player)
-            if FilteredMessage then
-                -- Broadcasts message
-                local HeardPlayers = 0
-
-                -- Distorts message if delirious
-                if inGame and EffectService:Check(Character, "Delirium") then
-                    FilteredMessage = EffectMsgs.Delirium[math.random(1, #EffectMsgs.Delirium)]
+                -- Turns on cooldown if message limit is reached
+                if PlrCooldowns[sender.UserId][1] >= MSGS_PER_SEC then
+                    PlrCooldowns[sender.UserId][2] = true
+                    self.Client.CooldownInit:Fire(sender, true)
                 end
 
                 -- Noise
-                local NoiseClass = CharService:GetCharacterClass(Character).NoiseClass
+                local NoiseClass = getNoiseClass(getLoadedChar(sender))
                 if NoiseClass then
-                    NoiseClass:SetNoise("Chat", #FilteredMessage, true)
+                    NoiseClass:SetNoise("Chat", #textChatMessage.Text, true)
                 end
 
+                -- Lets the sender know if their message reached nobody
+                local HeardPlayers = 0
                 for _, plr in Players:GetPlayers() do
-                    local Char = self.TeamService:CharIsLoaded(plr) and (plr.Character or plr.CharacterAdded:Wait()) or nil
-                    local rO = plr:GetAttribute("radioOn")
-
-                    if self:playersCanChat(player, plr) then
-                        local bothSpectators = plr.Team == game.Teams.Spectators and player.Team == game.Teams.Spectators
-                        local Distance = (Char and Character) and (Char.PrimaryPart.Position - Character.PrimaryPart.Position).Magnitude or math.huge
-                        if Distance <= MAX_DIST or (radioOn and rO) or bothSpectators or plr == player then
-                            if player.Team == game.Teams.Spectators or plr ~= player then
-                                HeardPlayers += 1
-                            end
-
-                            -- Makes message fully visible
-                            if bothSpectators or (rO and radioOn) then
-                                Distance = 0
-                            end
-
-                            -- Radio
-                            local NC = CharService:GetCharacterClass(Char).NoiseClass
-                            if NC and rO then
-                                NC:SetNoise("Radio", 1, false)
-                            end
-
-                            -- Changes message if confused
-                            local UsedMessage = FilteredMessage
-                            if inGame and EffectService:Check(Char, "Confusion") then
-                                UsedMessage = EffectMsgs.Confusion[math.random(1, #EffectMsgs.Confusion)]
-                            end
-
-                            -- off it goes
-                            self:SendMessage(player, plr, UsedMessage, self.TeamService:GetTeam(player), Distance, radioOn and rO)
-                        end
+                    if canHear(sender, plr) and (sender.Team == game.Teams.Spectators or plr ~= sender) then
+                        HeardPlayers += 1
                     end
                 end
 
                 if HeardPlayers == 0 then
-                    self:SendSubtitle(player, player, "Nobody heard you", "Rose")
+                    self:SendSubtitle(sender, sender, "Nobody heard you", "Rose")
                 end
             end
+        end
+
+        if MessageStates[textChatMessage] then
+            return false
+        end
+
+        local Heard = canHear(sender, recipient)
+
+        -- Radio noise
+        local NC = getNoiseClass(getLoadedChar(recipient))
+        if NC and Heard and recipient:GetAttribute("radioOn") then
+            NC:SetNoise("Radio", 1, false)
+        end
+
+        return Heard
+    end
+end
+
+-- On knit start completion
+function CommsService:KnitStart() : ()
+    -- Adds a player to the chat channel and warms their chat permission cache
+    local function initPlayer(plr : Player)
+        task.spawn(function()
+            pcall(function()
+                ProxChannel:AddUserAsync(plr.UserId)
+            end)
+
+            ChatPairs[plr.UserId] = ChatPairs[plr.UserId] or {}
+            for _, other in Players:GetPlayers() do
+                for _, pair in {{plr, other}, {other, plr}} do
+                    local pairSender, pairRecipient = pair[1], pair[2]
+
+                    ChatPairs[pairSender.UserId] = ChatPairs[pairSender.UserId] or {}
+                    if ChatPairs[pairSender.UserId][pairRecipient.UserId] == nil then
+                        task.spawn(function()
+                            local success, result = pcall(TCS.CanUsersChatAsync, TCS, pairSender.UserId, pairRecipient.UserId)
+                            ChatPairs[pairSender.UserId][pairRecipient.UserId] = success and result or true
+                        end)
+                    end
+                end
+            end
+        end)
+    end
+
+    for _, plr in Players:GetPlayers() do
+        initPlayer(plr)
+    end
+    Players.PlayerAdded:Connect(initPlayer)
+
+    Players.PlayerRemoving:Connect(function(plr : Player)
+        ChatPairs[plr.UserId] = nil
+        for _, cache in pairs(ChatPairs) do
+            cache[plr.UserId] = nil
         end
     end)
 end
