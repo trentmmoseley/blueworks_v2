@@ -24,7 +24,6 @@ function NoiseClass.new(charclass : {}) : {}
 
     Self.NoiseConn = nil
     Self.Profile = {
-        Chat     = 0,
         Gun      = 0,
         Movement = 0,
         Voice    = 0,

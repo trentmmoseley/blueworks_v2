@@ -10,7 +10,7 @@ The game includes projectile firearms, melee and unarmed combat, inventories and
 
 Key root files:
 
-- `default.project.json` — Rojo project. It maps `src/ReplicatedFirst`, `src/ReplicatedStorage`, `src/ServerScriptService`, `src/StarterGui`, and the two `src/StarterPlayer` folders into the DataModel. It also sets Workspace filtering/input properties and `SoundService.RespectFilteringEnabled`. It additionally configures `TextChatService`: `ChatVersion` is `TextChatService`, default channels/commands are disabled, a single `General` `TextChannel` carries all player chat, the native default chat window and input bar are disabled (a `TextChannelWindow` created by `CommsGui` is used instead), and native bubble chat is enabled. `TextChatService.PlatformIntegratedChat` must be set to `Enabled` in Studio — the pinned Rojo 7.7.0 cannot serialize it.
+- `default.project.json` — Rojo project. It maps `src/ReplicatedFirst`, `src/ReplicatedStorage`, `src/ServerScriptService`, `src/StarterGui`, and the two `src/StarterPlayer` folders into the DataModel. It also sets Workspace filtering/input properties and `SoundService.RespectFilteringEnabled`. It additionally sets `TextChatService.ChatVersion` to `TextChatService` so the place uses the default TextChatService channels, window, and commands. `TextChatService.PlatformIntegratedChat` must be set to `Enabled` in Studio — the pinned Rojo 7.7.0 cannot serialize it.
 - `aftman.toml` — pinned tools: **Rojo 7.7.0**, **Wally 0.3.2**, and **Selene 0.29.0**, installed through Aftman.
 - `wally.toml` — direct Wally dependencies. `wally.lock` is generated and records the resolved versions; do not edit it manually.
 - `selene.toml` — Selene with the Roblox standard library and project-specific lint rule settings.
@@ -83,7 +83,7 @@ Two networking systems coexist:
 
 Follow the networking mechanism already used by the surrounding domain rather than adding another transport.
 
-Player chat is a third, separate path: it must go through **TextChatService** (the legacy `Chat` service and manual `TextService` chat filtering are not used), with `PlatformIntegratedChat` enabled so Roblox owns delivery and rendering. A `TextChannelWindow` created by `CommsGui` renders the `General` channel (including its input); game code never reads message text. `CommsService` enforces proximity/team delivery, cooldowns, and noise through `TextChannel.ShouldDeliverCallback` on the server. Game notifications ("subtitles") are not chat and still use `CommsService`'s Knit signals.
+Player chat is a third, separate path: it uses the default **TextChatService** setup (default channels, window, and commands) with `PlatformIntegratedChat` enabled, and game code does not read, gate, or render chat messages. Game notifications ("subtitles") are not chat and use `CommsService`'s Knit signals.
 
 ### Persistence and client data
 

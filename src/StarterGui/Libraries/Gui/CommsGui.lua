@@ -4,7 +4,6 @@ local CommsGui       = {}
 local Debris         = game:GetService("Debris")
 local Players        = game:GetService("Players")
 local RunService     = game:GetService("RunService")
-local TCS            = game:GetService("TextChatService")
 local TweenService   = game:GetService("TweenService")
 
 local CommsService   = _G.Knit.GetService("CommsService")
@@ -19,18 +18,6 @@ local ChatSounds     = PlayerGui.Sounds.Chat
 
 local Feed           = TheGui:WaitForChild("Feed")
 local Subtitles      = TheGui:WaitForChild("Subtitles")
-
-local Output         = Feed:WaitForChild("Output")
-
-local GenChannel     = TCS:WaitForChild("General")
-
--- Native chat window; renders and inputs the General channel (PlatformIntegratedChat)
-local ChatWindow     = Instance.new("TextChannelWindow")
-ChatWindow.Name      = "ChatWindow"
-ChatWindow.BackgroundTransparency = 1
-ChatWindow.BorderSizePixel = 0
-ChatWindow.Target    = GenChannel
-ChatWindow.Parent    = TheGui
 
 -- Vars and consts
 local SubCounter     = 0
@@ -87,7 +74,7 @@ end
 
 -- Main function
 function CommsGui.Function()
-    -- Retires the legacy custom input and radio toggle; the native window handles chat now
+    -- Retires the legacy custom chat GUI; the default TextChatService window handles chat now
     Feed.Input.Visible = false
     Feed.Input.Frame.Visible = false
     Feed.TextButton.Visible = false
@@ -100,21 +87,9 @@ function CommsGui.Function()
 
     -- Run service
     RunService.PreRender:Connect(function(dt)
-        -- Keeps the native window overlaid on the old feed area
-        ChatWindow.Visible = TheGui.Enabled
-        ChatWindow.Position = UDim2.fromOffset(Output.AbsolutePosition.X, Output.AbsolutePosition.Y)
-        ChatWindow.Size = UDim2.fromOffset(Output.AbsoluteSize.X, Output.AbsoluteSize.Y)
-
         if not TheGui.Enabled then return end
 
         ChatSounds.TextScroll.Volume = math.min(#WritingMsgs / 8, 1/8)
-    end)
-
-    -- Cooldown init
-    CommsService.CooldownInit:Connect(function(new : boolean)
-        if new then
-            ChatSounds.Cooldown:Play()
-        end
     end)
 end
 
