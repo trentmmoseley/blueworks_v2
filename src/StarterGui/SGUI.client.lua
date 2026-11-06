@@ -42,6 +42,7 @@ task.spawn(function()
 	repeat
 		Success, Err = pcall(function()
 			SGUI:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+			SGUI:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, true)
 			-- SGUI:SetCore("ResetButtonCallback", false)
 		end)
 

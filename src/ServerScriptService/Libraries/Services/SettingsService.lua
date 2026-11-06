@@ -15,8 +15,7 @@ local SetsService      =  Knit.CreateService({
 local SETTINGS         = {
     inGame             = {false, false}, -- default value, is changeable
     isChatting         = {false, true},
-    onChatCD           = {false, true},
-    radioOn            = {false, true}
+    onChatCD           = {false, true}
 }
 
 -- [[ funcs ]] --

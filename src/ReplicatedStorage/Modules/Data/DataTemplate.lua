@@ -33,9 +33,6 @@ local DataTemplate   = {
         },
         
         -- Chat
-        ToggleRadio  = {
-            Keyboard = "LeftAlt",
-        },
         ChatToggle   = {
             Keyboard = "Slash",
         },

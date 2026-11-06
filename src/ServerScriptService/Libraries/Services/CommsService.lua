@@ -22,6 +22,9 @@ local MAX_DIST          = 100
 
 local MSGS_PER_SEC      = 6
 
+-- Message text is not readable by game code under PlatformIntegratedChat, so noise uses a fixed length
+local NOMINAL_MSG_LEN   = 20
+
 local MSG_COLORS        = {
     ["Red"]             = Color3.fromRGB(255, 0, 0),
     ["Green"]           = Color3.fromRGB(0, 255, 0),
@@ -91,7 +94,7 @@ function CommsService:KnitInit() : ()
         local Distance       = (SenderChar and RecipChar and SenderChar.PrimaryPart and RecipChar.PrimaryPart)
             and (RecipChar.PrimaryPart.Position - SenderChar.PrimaryPart.Position).Magnitude or math.huge
 
-        return Distance <= MAX_DIST or (sender:GetAttribute("radioOn") and recipient:GetAttribute("radioOn")) or bothSpectators or recipient == sender
+        return Distance <= MAX_DIST or bothSpectators or recipient == sender
     end
 
     -- Returns a character's noise class without yielding
@@ -150,12 +153,13 @@ function CommsService:KnitInit() : ()
                 if PlrCooldowns[sender.UserId][1] >= MSGS_PER_SEC then
                     PlrCooldowns[sender.UserId][2] = true
                     self.Client.CooldownInit:Fire(sender, true)
+                    self:SendSubtitle(sender, sender, "Chat cooldown", "Rose")
                 end
 
                 -- Noise
                 local NoiseClass = getNoiseClass(getLoadedChar(sender))
                 if NoiseClass then
-                    NoiseClass:SetNoise("Chat", #textChatMessage.Text, true)
+                    NoiseClass:SetNoise("Chat", NOMINAL_MSG_LEN, true)
                 end
 
                 -- Lets the sender know if their message reached nobody
@@ -176,15 +180,7 @@ function CommsService:KnitInit() : ()
             return false
         end
 
-        local Heard = canHear(sender, recipient)
-
-        -- Radio noise
-        local NC = getNoiseClass(getLoadedChar(recipient))
-        if NC and Heard and recipient:GetAttribute("radioOn") then
-            NC:SetNoise("Radio", 1, false)
-        end
-
-        return Heard
+        return canHear(sender, recipient)
     end
 end
 

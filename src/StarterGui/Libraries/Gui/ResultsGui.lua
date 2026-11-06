@@ -22,9 +22,7 @@ local HowTheyWon     = TheGui.HowTheyWon
 
 local Leaderboard    = TheGui.Leaderboard
 local LBList         = Leaderboard.Leaderboard
-local Stats          = Leaderboard.Stats
-
-local LBTemplate     = LBList.UIGridLayout.Frame
+local Stats          = Leaderboard.Stats 
 
 local ResultsScreen  = require(RepStorage.Remotes.ResultsScreen):Client()
 local CommsGui       = require(PlayerGui.Libraries.Gui.CommsGui)

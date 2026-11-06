@@ -27,7 +27,6 @@ function NoiseClass.new(charclass : {}) : {}
         Chat     = 0,
         Gun      = 0,
         Movement = 0,
-        Radio    = 0,
         Voice    = 0,
     }
     Self.Noise = 0
@@ -63,11 +62,7 @@ function NoiseClass:Start()
         for tag, val in self.Profile do
             TN += val
             if tag == "Movement" then continue end
-            if tag ~= "Radio" then
-                self.Profile[tag] = Lerp(val, 0, LerpByFrame(tag ~= "Gun" and 1/12 or 1/6, dt))
-            else
-                self.Profile[tag] = math.max(val - dt, 0)
-            end
+            self.Profile[tag] = Lerp(val, 0, LerpByFrame(tag ~= "Gun" and 1/12 or 1/6, dt))
         end
         self.Noise = TN
         self.Rig:SetAttribute("Noise", self.Noise)
