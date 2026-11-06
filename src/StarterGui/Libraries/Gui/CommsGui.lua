@@ -22,14 +22,14 @@ local Subtitles      = TheGui:WaitForChild("Subtitles")
 
 local Output         = Feed:WaitForChild("Output")
 
-local ProxChannel    = TCS:WaitForChild("Proximity")
+local GenChannel     = TCS:WaitForChild("General")
 
--- Native chat window; renders and inputs the Proximity channel (PlatformIntegratedChat)
+-- Native chat window; renders and inputs the General channel (PlatformIntegratedChat)
 local ChatWindow     = Instance.new("TextChannelWindow")
 ChatWindow.Name      = "ChatWindow"
 ChatWindow.BackgroundTransparency = 1
 ChatWindow.BorderSizePixel = 0
-ChatWindow.Target    = ProxChannel
+ChatWindow.Target    = GenChannel
 ChatWindow.Parent    = TheGui
 
 -- Vars and consts

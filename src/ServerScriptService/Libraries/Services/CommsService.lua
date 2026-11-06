@@ -13,7 +13,7 @@ local CommsService      = Knit.CreateService({
     }
 })
 
-local ProxChannel       = TCS:WaitForChild("Proximity")
+local GenChannel        = TCS:WaitForChild("General")
 
 -- Vars and consts
 local PlrCooldowns      = {}
@@ -127,7 +127,7 @@ function CommsService:KnitInit() : ()
     end)
 
     -- Gates delivery of every chat message; runs once per recipient on the server
-    ProxChannel.ShouldDeliverCallback = function(textChatMessage : TextChatMessage, textSource : TextSource) : boolean
+    GenChannel.ShouldDeliverCallback = function(textChatMessage : TextChatMessage, textSource : TextSource) : boolean
         local sender = textChatMessage.TextSource and Players:GetPlayerByUserId(textChatMessage.TextSource.UserId)
         local recipient = Players:GetPlayerByUserId(textSource.UserId)
         if not sender or not recipient then
@@ -190,7 +190,7 @@ function CommsService:KnitStart() : ()
     local function initPlayer(plr : Player)
         task.spawn(function()
             pcall(function()
-                ProxChannel:AddUserAsync(plr.UserId)
+                GenChannel:AddUserAsync(plr.UserId)
             end)
 
             ChatPairs[plr.UserId] = ChatPairs[plr.UserId] or {}

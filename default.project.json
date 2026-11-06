@@ -43,7 +43,7 @@
         "CreateDefaultTextChannels": false
       },
 
-      "Proximity": {
+      "General": {
         "$className": "TextChannel"
       },
 
