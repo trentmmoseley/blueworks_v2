@@ -6,6 +6,8 @@ local Players        = game:GetService("Players")
 local RepStorage     = game:GetService("ReplicatedStorage")
 local TweenService   = game:GetService("TweenService")
 
+local ScoreService   = _G.Knit.GetService("ScoreService")
+
 -- Players
 local Player         = Players.LocalPlayer
 local Character      = Player.Character or Player.CharacterAdded:Wait()
@@ -27,6 +29,8 @@ local Stats          = Leaderboard.Stats
 local ResultsScreen  = require(RepStorage.Remotes.ResultsScreen):Client()
 local CommsGui       = require(PlayerGui.Libraries.Gui.CommsGui)
 local _effects       = require(PlayerGui.Libraries.Gui._EFFECTS)
+
+local GameValues     = RepStorage.GameValues
 
 -- Vars and consts
 local GAMEPLAY_GUIS  = {
@@ -61,6 +65,17 @@ local WINNER_INFO    = {
         HowMSG       = "Squadmates wiped out",
         Color        = Color3.fromRGB(255, 0, 0),
     },
+}
+
+local PLACE_COLORS   = {
+    Color3.fromRGB(255, 215, 0), -- 1st
+    Color3.fromRGB(192, 192, 192), -- 2nd
+    Color3.fromRGB(205, 127, 50), -- 3rd
+}
+
+local ENTITY_NAME_MAP = {
+    Proxy = "PNDR-4075",
+    Tethered = "PNDR-0770",
 }
 
 -- [[ funcs ]] --
@@ -137,6 +152,11 @@ function ResultsGui.Function()
         Winner.Text = WinnerInfo.WinnerMSG or winner
         HowTheyWon.Text = WinnerInfo.HowMSG or how
 
+        local TimeElapsed = GameValues.Numbers.TimeLeft:GetAttribute("TimeElapsed")
+
+        Stats.TimeElapsed.Value.Text = string.format("%2i:%2i<font size = '10'>.%2i</font>", math.floor(TimeElapsed / 60), TimeElapsed % 60, (TimeElapsed * 100) % 100)
+        Stats.NodesCompleted.Value.Text = string.format("%i<font size = '10'>/%i</font>", GameValues.Numbers.NodesLeft:GetAttribute("Init") - GameValues.Numbers.NodesLeft.Value, GameValues.Numbers.NodesLeft:GetAttribute("Init"))
+
         for _, part in {Winner, HowTheyWon, MissionOver, Leaderboard} do
             part.Visible = true
             _effects:CreateBuffer(part, 1)
@@ -144,6 +164,32 @@ function ResultsGui.Function()
 
         Sounds.Results[winner]:Play()
         Sounds.Death.TurnOn:Play()
+
+        -- Leaderboard
+        ScoreService:CompileLeaderboard():andThen(function(data)
+            for i, profile in ipairs(data) do
+                print(profile)
+
+                local Template = LBList.UIListLayout.Template:Clone()
+                Template:WaitForChild("Place").Text = string.format("#%i", i)
+                Template.Place.TextColor3 = PLACE_COLORS[i] or Color3.fromRGB(67, 81, 147)
+                Template.UIStroke.Color = Template.Place.TextColor3
+
+                Template.PlayerName.Text = ENTITY_NAME_MAP[profile.Username] or profile.Username
+                Template.PlayerName.TextColor3 = WINNER_INFO[profile.Team].Color:Lerp(Color3.fromHSV(1, 0, 1), 1/2)
+
+                if profile.Status == "DEAD" then
+                    Template.PlayerName.TextColor3 = Template.PlayerName.TextColor3:Lerp(Color3.fromRGB(61, 46, 46), 1/2)
+                    Template.Place.TextColor3 = Template.PlayerName.TextColor3
+                    Template.Score.TextColor3 = Template.PlayerName.TextColor3
+                    Template.PlayerName.Text = Template.PlayerName.Text..string.format(" <font color = 'rgb(255, 255, 255)'><font size = '8'>%s</font></font>", profile.Team == "Squadmates" and "DEAD" or "NEUTRALIZED")
+                    Template.UIStroke.Transparency = 1
+                end
+
+                Template.Score.Text = not ENTITY_NAME_MAP[profile.Username] and tostring(profile.Score).." pts." or ""
+                Template.Parent = LBList
+            end
+        end):catch(warn)
     end)
 
     -- Restores movement, UIs and the camera once the character is reloaded
