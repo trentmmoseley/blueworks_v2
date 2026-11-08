@@ -47,10 +47,11 @@ local TextScroll     = ChatInteract and ChatInteract:FindFirstChild("TextScroll"
 
 -- Vars and consts
 local LTRS_PER_SEC   = 75
+local VOTE_FOV       = 85
 
 local ROLE_COLORS    = {
-    Squadmates       = Color3.fromRGB(94, 110, 255),
-    Subjects         = Color3.fromRGB(255, 100, 100),
+    Squadmates       = Color3.fromRGB(0, 26, 255),
+    Subjects         = Color3.fromRGB(255, 0, 0),
 }
 
 local OBJECTIVES     = {
@@ -119,10 +120,10 @@ local function runInitiation(voteName : string, voteInfo : {}) : ()
         InitiationCC.Name = "InitiationCC"
         InitiationCC.Parent = Lighting
     end
-    InitiationCC.Saturation = 0
-    InitiationCC.TintColor = TeamColor:Lerp(Color3.fromHSV(0, 0, 1), 1/2)
+    InitiationCC.Saturation = -0.5
+    InitiationCC.TintColor = TeamColor:Lerp(Color3.fromHSV(0, 0, 1), 1/8)
     InitiationCC.Brightness = -2
-    InitiationCC.Contrast = 1
+    InitiationCC.Contrast = 1.5
 
     -- Team-colored glow
     local InitiationBloom = Lighting:FindFirstChild("InitiationBloom")
@@ -154,7 +155,6 @@ local function runInitiation(voteName : string, voteInfo : {}) : ()
     -- Map camera from the initiation POV, with mouse pan
     local POV = Map:WaitForChild("InitPOV")
     local CF = POV:GetPivot()
-    local FOV = POV:GetAttribute("FieldOfView") or 90
     local CFPan = CFrame.Angles(0, 0, 0)
 
     Camera.CameraType = Enum.CameraType.Scriptable
@@ -163,7 +163,7 @@ local function runInitiation(voteName : string, voteInfo : {}) : ()
         local PosX, PosY = MouseTracking.getPositionScale()
         CFPan = CFPan:Lerp(CFrame.Angles(-math.rad(PosY * 5), -math.rad(PosX * 5), 0), LerpByFrame(0.05, dt))
         Camera.CFrame = CF * CFPan
-        Camera.FieldOfView = FOV
+        Camera.FieldOfView = VOTE_FOV
         _static.ImageColor3 = Color3.fromHSV((Player.Team == game.Teams.Squadmates and 2 or 0) / 3, 2/5, 1)
     end)
 
@@ -177,7 +177,7 @@ local function runInitiation(voteName : string, voteInfo : {}) : ()
         DaySuffix = ({"st", "nd", "rd"})[tonumber(LastDayDigit)]
     end
 
-    local DateText = string.upper(string.format("%s %i%s, 1999", os.date("%B"), Now.day, DaySuffix))
+    local DateText = string.upper(string.format("%s %i%s, 2███", os.date("%B"), Now.day, DaySuffix))
     local TimeText = string.format("%.2i:%s", MapInfo.Environment.Hour, os.date("%M"))
     local LocationText = string.format("<font color = 'rgb(255, 100, 100)'><b>[REDACTED]</b></font>, %s, U.S.A.", string.upper(MapInfo.Settings.State))
 
@@ -202,7 +202,7 @@ local function runInitiation(voteName : string, voteInfo : {}) : ()
         end
     end
 
-    TweenService:Create(InitiationCC, TweenInfo.new(3), {Brightness = 0.5}):Play()
+    TweenService:Create(InitiationCC, TweenInfo.new(3), {Brightness = 0.8}):Play()
     task.wait(3)
 
     -- Nodes
@@ -222,10 +222,16 @@ local function runInitiation(voteName : string, voteInfo : {}) : ()
     local SpawnChoice = nil
     if CharSpawns then
         for _, sp in CharSpawns:GetChildren() do
-            local NewNode = Nodes.SpawnNode:Clone()
+            local NewNode = Nodes.SpawnTag:Clone()
             NewNode.Parent = VotingNodes
             NewNode.Name = sp.Name
             NewNode.Adornee = sp
+
+            -- Renders regardless of occlusion, distance, or scene lighting
+            NewNode.Enabled = true
+            NewNode.AlwaysOnTop = true
+            NewNode.LightInfluence = 0
+            NewNode.MaxDistance = 100000
 
             NewNode.LocationName.Text = string.upper(sp.Name)
             _effects:CreateBuffer(NewNode.LocationName, 3)
@@ -241,12 +247,18 @@ local function runInitiation(voteName : string, voteInfo : {}) : ()
     -- Map node markers: regular nodes in red, checkpoints in blue
     local Interactables = Map:FindFirstChild("Interactables")
     local InteractNodes = Interactables and Interactables:FindFirstChild("Nodes")
-    if InteractNodes and Nodes:FindFirstChild("NodeMarker") then
+    if InteractNodes and Nodes:FindFirstChild("NodeTag") then
         for _, node in InteractNodes:GetChildren() do
-            local Marker = Nodes.NodeMarker:Clone()
+            local Marker = Nodes.NodeTag:Clone()
             Marker.Parent = MapNodes
             Marker.Name = node.Name
             Marker.Adornee = node.PrimaryPart or node:FindFirstChildWhichIsA("BasePart", true)
+
+            -- Renders regardless of occlusion, distance, or scene lighting
+            Marker.Enabled = true
+            Marker.AlwaysOnTop = true
+            Marker.LightInfluence = 0
+            Marker.MaxDistance = 100000
 
             if Marker:FindFirstChild("LocationName") then
                 Marker.LocationName.Text = string.upper(node.Name)
@@ -338,7 +350,7 @@ local function runInitiation(voteName : string, voteInfo : {}) : ()
     FadeStatic.Visible = true
     FadeImg.ImageColor3 = TeamColor
 
-    TweenService:Create(Sounds.FadeStatic, TweenInfo.new(5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Volume = 3/4}):Play()
+    TweenService:Create(InitiationSFX.FadeStatic, TweenInfo.new(5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Volume = 3/4}):Play()
     TweenService:Create(FadeImg, TweenInfo.new(5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {ImageTransparency = 0}):Play()
 
     task.wait(5)
@@ -357,7 +369,7 @@ local function runInitiation(voteName : string, voteInfo : {}) : ()
 
     _effects:CreateBuffer(Objective, 3)
 
-    Sounds.FadeStatic:Stop()
+    InitiationSFX.FadeStatic:Stop()
     InitiationSFX.Hiss:Stop()
     InitiationSFX.FinalInit.Volume = 0.5
     InitiationSFX.FinalInit:Play()
@@ -366,6 +378,9 @@ local function runInitiation(voteName : string, voteInfo : {}) : ()
     Objective.TextStrokeTransparency = 1/2
     InitiationCC:Destroy()
     InitiationBloom:Destroy()
+
+    -- Camera returns to the character; play mode resumes while the objective lingers
+    VoteService:FinishInitiation():catch(warn)
 
     task.wait(7)
 
@@ -376,7 +391,6 @@ local function runInitiation(voteName : string, voteInfo : {}) : ()
 
     InitiationSFX.FinalInit:Stop()
     TheGui.Enabled = false
-    VoteService:FinishInitiation():catch(warn)
     Active = false
 end
 

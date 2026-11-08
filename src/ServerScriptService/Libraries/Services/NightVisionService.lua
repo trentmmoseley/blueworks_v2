@@ -29,6 +29,7 @@ function NVService:KnitInit() : ()
     -- On NV toggle
     self.Client.NVToggle:Connect(function(player : Player)
         if player.Team ~= game.Teams.Squadmates then return end
+        if player:GetAttribute("InitiationActive") == true then return end
         local Character = player.Character or player.CharacterAdded:Wait()
         local Class = self.CharService:GetCharacterClass(Character)
         local NVClass = Class.NVClass

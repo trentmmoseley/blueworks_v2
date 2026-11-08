@@ -109,6 +109,8 @@ local CurrentToggle	 = nil
 
 -- Toggles flashlight
 local function toggleFlashlight(actionname, inputstate)
+	if Player:GetAttribute("InitiationActive") == true then return end
+
 	if actionname == TOGGLE_FL then
 		if inputstate == Enum.UserInputState.Begin then
 			uLS = not uLS
