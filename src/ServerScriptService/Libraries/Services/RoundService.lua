@@ -8,6 +8,7 @@ local Knit            = require(RepStorage.Packages.Knit)
 local RoundService    = Knit.CreateService({
     Name = "RoundService",
     Client = {},
+    Map = nil,
 })
 
 local GameValues      = RepStorage.GameValues
@@ -18,6 +19,8 @@ local TimeLeft        = GameValues.Numbers.TimeLeft
 local ResultsScreen   = require(RepStorage.Remotes.ResultsScreen):Server()
 
 -- Vars and consts
+local VOTE_DURATION   = 20
+
 local TIME_LIMITS     = {
     Classic           = 60 * 15
 }
@@ -80,6 +83,66 @@ local RESULT_MSGS     = {
 -- Calculates Node progress
 function RoundService:NodeProgress() : number
     return 1 - GameValues.Numbers.NodesLeft.Value / math.max(GameValues.Numbers.NodesLeft:GetAttribute("Init"), 1)
+end
+
+-- Spawn voting
+function RoundService:SpawnVoting() : ()
+    self.Map = game.Workspace:FindFirstChild("Playspace")
+    if not self.Map then return end
+
+    local SpawnFolder = self.Map.Spawns.Characters
+
+    -- Runs one team's vote and dispatches its members to the winning spawn
+    local function runTeamVote(teamName : string) : ()
+        local Team = game.Teams:FindFirstChild(teamName)
+        local TeamSpawns = SpawnFolder and SpawnFolder:FindFirstChild(teamName)
+        if not Team or not TeamSpawns then return end
+        if #Team:GetPlayers() == 0 then return end
+
+        local Spawns = TeamSpawns:GetChildren()
+        if #Spawns == 0 then return end
+
+        -- Squadmates only get two random spawn choices
+        if teamName == "Squadmates" then
+            while #Spawns > 2 do
+                local ChosenSpawn = Spawns[math.random(1, #Spawns)]
+                table.remove(Spawns, table.find(Spawns, ChosenSpawn))
+                ChosenSpawn:Destroy()
+            end
+        end
+
+        -- Choices are keyed by spawn name
+        local Choices = {}
+        for _, sp in Spawns do
+            table.insert(Choices, sp.Name)
+        end
+
+        local Winner = self.VoteService:Vote(teamName.."Spawn", Choices, VOTE_DURATION, teamName)
+        if not Winner then return end
+
+        local WinnerSpawn = TeamSpawns:FindFirstChild(Winner)
+        if not WinnerSpawn then return end
+
+        -- Dispatches the entire team to the winning spawn
+        for _, plr in Team:GetPlayers() do
+            local Character = plr.Character
+            if Character then
+                Character:PivotTo(WinnerSpawn:GetPivot() * CFrame.new(math.random(-4, 4), 3, math.random(-4, 4)))
+            end
+        end
+    end
+
+    -- Both teams vote at the same time; the round starts once every vote has ended
+    local Threads = {}
+    for _, teamName in {"Squadmates", "Subjects"} do
+        table.insert(Threads, task.spawn(runTeamVote, teamName))
+    end
+
+    for _, thread in Threads do
+        while coroutine.status(thread) ~= "dead" do
+            task.wait()
+        end
+    end
 end
 
 -- Main round loop
@@ -193,6 +256,7 @@ function RoundService:KnitInit()
     self.StraySoundService = _G.Knit.GetService("StraySoundService")
     self.CharService = _G.Knit.GetService("CharService")
     self.EffectService = _G.Knit.GetService("EffectService")
+    self.VoteService = _G.Knit.GetService("VoteService")
 
     -- Results state ends when the character is reloaded
     local function watchPlayer(plr : Player)

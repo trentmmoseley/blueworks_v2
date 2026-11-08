@@ -93,11 +93,18 @@ end
 
 -- Creates buffer
 function GuiEffects:CreateBuffer(part : BasePlayerGui, intensity : number)
-    local BufferV1 = Instance.new("StringValue")
-    BufferV1.Name = "_effect"
-    BufferV1.Value = "BufferV"
+    local BufferV1 = part:FindFirstChild("_effect")
+
+    -- Reuse an existing BufferV effect so the intensity actually resets;
+    -- a duplicate _effect child would be shadowed by the original
+    if not BufferV1 or BufferV1.Value ~= "BufferV" then
+        BufferV1 = Instance.new("StringValue")
+        BufferV1.Name = "_effect"
+        BufferV1.Value = "BufferV"
+        BufferV1.Parent = part
+    end
+
     BufferV1:SetAttribute("Val", intensity)
-    BufferV1.Parent = part
 end
 
 -- Main function

@@ -538,7 +538,11 @@ local function update(dt : number, sway, bobble, recoil) : ()
         end
     end
 
-    -- Firing gun
+    -- Firing gun; blocked while the initiation sequence owns the player
+    if firingGun and Player:GetAttribute("InitiationActive") == true then
+        firingGun = false
+    end
+
     if firingGun then
         if _G.CurrentI2 then
             if gunDetected then
@@ -914,7 +918,7 @@ function Viewmodel.Function()
 
     -- Aiming
     UIS.InputBegan:Connect(function(input, processed)
-        if processed or Player:GetAttribute("isChatting") == true then return end
+        if processed or Player:GetAttribute("isChatting") == true or Player:GetAttribute("InitiationActive") == true then return end
         if input.UserInputType == Enum.UserInputType.MouseButton2 then
             if gunDetected then
                 GunService.AimToggle:Fire(true)
@@ -944,6 +948,7 @@ function Viewmodel.Function()
     end)
 
     MobileButtons.ButtonsHolder.Aim.TextButton.MouseButton1Click:Connect(function()
+        if Player:GetAttribute("InitiationActive") == true then return end
         GunService.AimToggle:Fire(not Character:GetAttribute("isAiming"))
     end)
 
@@ -955,7 +960,7 @@ function Viewmodel.Function()
 
     -- Reloading
     UIS.InputBegan:Connect(function(input, gpe)
-        if gpe or Player:GetAttribute("isChatting") == true then return end
+        if gpe or Player:GetAttribute("isChatting") == true or Player:GetAttribute("InitiationActive") == true then return end
         if table.find({Enum.KeyCode[RELOAD_GAMEPAD], Enum.KeyCode[RELOAD_KEYBOARD]}, input.KeyCode) then
             GunRequest:Fire("RELOAD")
         end

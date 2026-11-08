@@ -61,6 +61,13 @@ function Perspective.Function(dt)
         return
     end
 
+    -- While spawn voting is showing the InitiationGui module owns the camera; Classic mode frees the mouse for the vote buttons
+    if Player:GetAttribute("InitiationActive") == true then
+        Player.CameraMode = Enum.CameraMode.Classic
+        WasGrabbed = Grabbed
+        return
+    end
+
     if not Grabbed and (WasGrabbed or Camera.CameraType == Enum.CameraType.Scriptable) then
         restoreCamera()
     else

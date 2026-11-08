@@ -42,5 +42,8 @@ local Proxy = _G.Knit.GetService("NPCService"):CreateNPC("Proxy", CFrame.new(20,
 
 repeat task.wait(4) until #game.Teams.Squadmates:GetPlayers() > 0
 
+-- Teams vote on their dispatch spawns before the round begins
+_G.Knit.GetService("RoundService"):SpawnVoting()
+
 local Winner, Outcome = _G.Knit.GetService("RoundService"):Classic()
 warn(Winner, Outcome)

@@ -49,6 +49,7 @@ function MovementService:KnitInit() : ()
             local Character = player.Character or player.CharacterAdded:Wait()
             if Character:GetAttribute("isGrabbed") == true then return end
             if player:GetAttribute("ResultsActive") == true then return end
+            if player:GetAttribute("InitiationActive") == true then return end
 
             local Humanoid = Character:FindFirstChildOfClass("Humanoid")
             local CharClass = CharService:GetCharacterClass(Character)
@@ -81,6 +82,7 @@ function MovementService:KnitInit() : ()
             local Character = player.Character or player.CharacterAdded:Wait()
             if Character:GetAttribute("isGrabbed") == true then return end
             if player:GetAttribute("ResultsActive") == true then return end
+            if player:GetAttribute("InitiationActive") == true then return end
 
             local CharClass = CharService:GetCharacterClass(Character)
 

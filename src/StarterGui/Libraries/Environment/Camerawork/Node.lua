@@ -46,6 +46,7 @@ end
 -- Main function
 function NodeCam.Function(dt)
     if Player:GetAttribute("ResultsActive") == true then return end
+    if Player:GetAttribute("InitiationActive") == true then return end
 
     local QuarterLerp = LerpByFrame(1/4, dt)
     local NodeID = Character and Character:GetAttribute("NodeID") or 0

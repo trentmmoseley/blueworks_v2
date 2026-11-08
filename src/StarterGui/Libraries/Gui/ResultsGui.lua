@@ -190,6 +190,20 @@ function ResultsGui.Function()
                 Template.Parent = LBList
             end
         end):catch(warn)
+
+        task.wait(10)
+
+        for _, part in {Winner, HowTheyWon, MissionOver, Leaderboard} do
+            task.spawn(function()
+                _effects:CreateBuffer(part, 1)
+                task.wait(1/4.5)
+                part.Visible = false
+            end)
+        end
+
+        task.wait(2)
+        TweenService:Create(ResultsCC, TweenInfo.new(5), {Brightness = -1}):Play()
+        task.wait(5)
     end)
 
     -- Restores movement, UIs and the camera once the character is reloaded

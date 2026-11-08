@@ -44,6 +44,7 @@ function GunService:KnitInit() : ()
     -- Aiming
     self.Client.AimToggle:Connect(function(plr : Player, toggle : boolean)
         if plr.Character and plr.Character:GetAttribute("isGrabbed") == true then return end
+        if plr:GetAttribute("InitiationActive") == true then return end
 
         -- Only allow aiming while a ranged tool is equipped
         local Gun = plr.Character and plr.Character:FindFirstChildOfClass("Tool")
@@ -62,6 +63,7 @@ function GunService:KnitInit() : ()
         if player.Team ~= game.Teams.Squadmates then return end
         local Character = player.Character or player.CharacterAdded:Wait()
         if not Character or Character:GetAttribute("isGrabbed") == true then return end
+        if player:GetAttribute("InitiationActive") == true then return end
         local Gun = Character:FindFirstChildOfClass("Tool")
         if not Gun or Gun:GetAttribute("Class") ~= "Ranged" then return end
 
