@@ -19,7 +19,7 @@ local TimeLeft        = GameValues.Numbers.TimeLeft
 local ResultsScreen   = require(RepStorage.Remotes.ResultsScreen):Server()
 
 -- Vars and consts
-local VOTE_DURATION   = 350
+local VOTE_DURATION   = 35
 
 local TIME_LIMITS     = {
     Classic           = 60 * 15

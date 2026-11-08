@@ -41,9 +41,7 @@ local LerpByFrame    = require(RepStorage.Modules.Util.Math.LerpByFrame)
 local MouseTracking  = require(PlayerGui.Libraries.Misc._mousetracking)
 local _effects       = require(PlayerGui.Libraries.Gui._EFFECTS)
 
-local ChatSounds     = Sounds:FindFirstChild("Chat")
-local ChatInteract   = ChatSounds and ChatSounds:FindFirstChild("ChatInteraction")
-local TextScroll     = ChatInteract and ChatInteract:FindFirstChild("TextScroll")
+local TextScroll     = InitiationSFX.TextScroll
 
 -- Vars and consts
 local LTRS_PER_SEC   = 75
@@ -60,17 +58,13 @@ local OBJECTIVES     = {
 }
 
 local Active         = false
+local WritingStats   = {}
 
 -- [[ funcs ]] --
 
 -- Types text out letter by letter
 local function typewrite(label : GuiLabel, text : string) : ()
-    local TS = nil
-    if TextScroll then
-        TS = TextScroll:Clone()
-        TS.Parent = TextScroll.Parent
-        TS.Volume = 1
-    end
+    table.insert(WritingStats, label)
 
     if string.find(text, "font") then
         local Redacted = string.sub(text, 1, string.find(text, "</font>") + #"</font>")
@@ -90,9 +84,7 @@ local function typewrite(label : GuiLabel, text : string) : ()
         end
     end
 
-    if TS then
-        TS:Destroy()
-    end
+    table.remove(WritingStats, table.find(WritingStats, label))
 end
 
 -- Main voting sequence; runs once per vote
@@ -178,7 +170,7 @@ local function runInitiation(voteName : string, voteInfo : {}) : ()
     end
 
     local DateText = string.upper(string.format("%s %i%s, 2███", os.date("%B"), Now.day, DaySuffix))
-    local TimeText = string.format("%.2i:%s", MapInfo.Environment.Hour, os.date("%M"))
+    local TimeText = string.format("%.2i:%s %sM", MapInfo.Environment.Hour, os.date("%M"), (MapInfo.Environment.Hour == 12 or MapInfo.Environment.Hour < 6) and "A" or "P")
     local LocationText = string.format("<font color = 'rgb(255, 100, 100)'><b>[REDACTED]</b></font>, %s, U.S.A.", string.upper(MapInfo.Settings.State))
 
     local StatOrder = {
@@ -186,6 +178,15 @@ local function runInitiation(voteName : string, voteInfo : {}) : ()
         {Stats:FindFirstChild("Time"), TimeText},
         {Stats:FindFirstChild("Location"), LocationText},
     }
+
+    -- Typewriter sound while stats are written, like Subtitles
+    if not TextScroll.IsPlaying then
+        TextScroll:Play()
+    end
+
+    local StatsSFXConn = RunService.PreRender:Connect(function()
+        TextScroll.Volume = math.min(#WritingStats / 8, 1/8)
+    end)
 
     task.wait(2)
 
@@ -195,6 +196,9 @@ local function runInitiation(voteName : string, voteInfo : {}) : ()
             task.wait(1)
         end
     end
+
+    StatsSFXConn:Disconnect()
+    TextScroll.Volume = 0
 
     for _, info in pairs(StatOrder) do
         if info[1] then
@@ -260,9 +264,23 @@ local function runInitiation(voteName : string, voteInfo : {}) : ()
             Marker.LightInfluence = 0
             Marker.MaxDistance = 100000
 
-            if Marker:FindFirstChild("LocationName") then
-                Marker.LocationName.Text = string.upper(node.Name)
-                Marker.LocationName.TextColor3 = string.find(node.Name, "Checkpoint") and Color3.fromRGB(94, 110, 255) or Color3.fromRGB(255, 100, 100)
+            -- Icons and label recolor by node type: checkpoints blue, regular nodes red
+            local isCheckpoint = string.find(node.Name, "Checkpoint") ~= nil
+            local TagColor = isCheckpoint and Color3.fromRGB(94, 110, 255) or Color3.fromRGB(255, 100, 100)
+
+            for _, icon : GuiObject in {Marker.Button, Marker.Button.ImageButton} do
+                if icon:IsA("ImageLabel") or icon:IsA("ImageButton") then
+                    icon.ImageColor3 = TagColor
+                    icon.BackgroundColor3 = TagColor:Lerp(Color3.fromRGB(0, 0, 0), 1/2)
+                end
+            end
+
+            Marker.Button.UIStroke.Color = TagColor
+
+            local Label = Marker:FindFirstChild("LocationName", true)
+            if Label then
+                Label.Text = isCheckpoint and "CHECKPOINT" or "NODE"
+                Label.TextColor3 = TagColor
             end
         end
     end
