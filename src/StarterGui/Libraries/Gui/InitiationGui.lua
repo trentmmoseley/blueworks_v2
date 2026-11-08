@@ -169,7 +169,7 @@ local function runInitiation(voteName : string, voteInfo : {}) : ()
         DaySuffix = ({"st", "nd", "rd"})[tonumber(LastDayDigit)]
     end
 
-    local DateText = string.upper(string.format("%s %i%s, 2███", os.date("%B"), Now.day, DaySuffix))
+    local DateText = string.upper(string.format("%s %i%s, ████", os.date("%B"), Now.day, DaySuffix))
     local TimeText = string.format("%.2i:%s %sM", MapInfo.Environment.Hour, os.date("%M"), (MapInfo.Environment.Hour == 12 or MapInfo.Environment.Hour < 6) and "A" or "P")
     local LocationText = string.format("<font color = 'rgb(255, 100, 100)'><b>[REDACTED]</b></font>, %s, U.S.A.", string.upper(MapInfo.Settings.State))
 
