@@ -138,6 +138,7 @@ function RoundService:SpawnVoting() : ()
         -- Choices are keyed by spawn name
         local Choices = {}
         for _, sp in Spawns do
+            sp.Transparency = 1
             table.insert(Choices, sp.Name)
         end
 
@@ -204,7 +205,7 @@ function RoundService:Classic() : (string, string)
         for _, entity in RoundService.Subjects do
             local EntityInfo = PNDRInfoRep[entity]
             local Subentities = countSubentities(entity)
-            local IdealCount = game.Workspace.Characters:FindFirstChild(EntityInfo.Name) and Lerp(EntityInfo.SECount[1], EntityInfo.SECount[2], self:NodeProgress()) or 0
+            local IdealCount = game.Workspace.Characters:FindFirstChild(EntityInfo.Name) and math.round(Lerp(EntityInfo.SECount[1], EntityInfo.SECount[2], self:NodeProgress())) or 0
             if #Subentities < IdealCount then
                 local ChosenEntity = WeightSystem(EntityInfo.Subentities)
                 local Spawns = game.Workspace:WaitForChild("Playspace").Spawns.Characters.Subjects:GetChildren()

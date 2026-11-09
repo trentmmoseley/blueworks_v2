@@ -13,9 +13,9 @@ local SimplePath      = require(RepStorage.Modules.Util.SimplePath)
 
 -- Vars and consts
 local ANIMS         = {
-    ["Idle"]        = {115958567806923, Enum.AnimationPriority.Idle},
-    ["Follow"]      = {122754662882384, Enum.AnimationPriority.Movement},
-    ["Chase"]       = {104412606721181, Enum.AnimationPriority.Movement},
+    ["Idle"]        = {88621504256286, Enum.AnimationPriority.Idle},
+    ["Follow"]      = {89637238529940, Enum.AnimationPriority.Movement},
+    ["Chase"]       = {121987424972667, Enum.AnimationPriority.Movement},
     ["Spawn"]       = {125353215139142, Enum.AnimationPriority.Action4},
 }
 
@@ -30,7 +30,7 @@ local SPEEDS        = {
     CHASE           = 32,
 }
 
-local MAX_HEALTH    = 150
+local MAX_HEALTH    = 80
 
 -- Sensing is radial: any hostile within AGGRO_RANGE is detected instantly, even
 -- through walls; the chase holds until the target escapes past LEASH_RANGE.
