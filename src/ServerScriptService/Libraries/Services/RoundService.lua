@@ -9,6 +9,7 @@ local RoundService    = Knit.CreateService({
     Name = "RoundService",
     Client = {},
     Map = nil,
+    Subjects = {4075},
 })
 
 local GameValues      = RepStorage.GameValues
@@ -16,10 +17,19 @@ local NodesLeft       = GameValues.Numbers.NodesLeft
 local Status          = GameValues.Strings.Status
 local TimeLeft        = GameValues.Numbers.TimeLeft
 
+local Lerp            = require(RepStorage.Modules.Util.Math.Lerp)
+local WeightSystem    = require(RepStorage.Modules.Util.Math.WeightSystem)
+
+local PNDRInfoRep     = require(RepStorage.Modules.Data.PNDRSubjects)
+
 local ResultsScreen   = require(RepStorage.Remotes.ResultsScreen):Server()
 
 -- Vars and consts
 local VOTE_DURATION   = 35
+
+-- Endgame decay: once every Node is calibrated, all subentities (e.g. the
+-- Necromanced) wither away at this much health per second until they die
+local SUBENTITY_DECAY = 2
 
 local TIME_LIMITS     = {
     Classic           = 60 * 15
@@ -79,6 +89,20 @@ local RESULT_MSGS     = {
 }
 
 -- [[ funcs ]] --
+
+-- Counts subentities present in-match
+local function countSubentities(entitycode : number) : {Model}
+    local SubentityList = PNDRInfoRep[entitycode].Subentities
+    local FoundSubentities = {}
+
+    for _, entity in game.Workspace:WaitForChild("Characters"):GetChildren() do
+        if SubentityList[entity.Name] and entity:GetAttribute("isNPC") == true then
+            table.insert(FoundSubentities, entity)
+        end
+    end
+
+    return FoundSubentities
+end
 
 -- Calculates Node progress
 function RoundService:NodeProgress() : number
@@ -175,6 +199,30 @@ function RoundService:Classic() : (string, string)
             Outcome = "SQUADMATES_WIPED"
         end
 
+        -- Subentities
+        local Decaying = self:NodeProgress() == 1
+        for _, entity in RoundService.Subjects do
+            local EntityInfo = PNDRInfoRep[entity]
+            local Subentities = countSubentities(entity)
+            local IdealCount = game.Workspace.Characters:FindFirstChild(EntityInfo.Name) and Lerp(EntityInfo.SECount[1], EntityInfo.SECount[2], self:NodeProgress()) or 0
+            if #Subentities < IdealCount then
+                local ChosenEntity = WeightSystem(EntityInfo.Subentities)
+                local Spawns = game.Workspace:WaitForChild("Playspace").Spawns.Characters.Subjects:GetChildren()
+                local ChosenSpawn = Spawns[math.random(1, #Spawns)]
+                self.NPCService:CreateNPC(ChosenEntity, ChosenSpawn.CFrame)
+            end
+
+            -- Endgame decay: with every Node calibrated, subentities wither away
+            if Decaying then
+                for _, subentity in Subentities do
+                    local Hum = subentity.Parent and subentity:FindFirstChildOfClass("Humanoid")
+                    if Hum and Hum.Health > 0 then
+                        self.HealthService:Damage(subentity, SUBENTITY_DECAY * dt)
+                    end
+                end
+            end
+        end
+
         -- Subject(s) purged: every Subjects entity (e.g. the Proxy) is dead or gone
         local Subjects = self.TeamService:GetTeamMembers("Subjects")
         local SubjectsAlive = 0
@@ -256,7 +304,9 @@ function RoundService:KnitInit()
     self.StraySoundService = _G.Knit.GetService("StraySoundService")
     self.CharService = _G.Knit.GetService("CharService")
     self.EffectService = _G.Knit.GetService("EffectService")
+    self.HealthService = _G.Knit.GetService("HealthService")
     self.VoteService = _G.Knit.GetService("VoteService")
+    self.NPCService = _G.Knit.GetService("NPCService")
 
     -- Results state ends when the character is reloaded
     local function watchPlayer(plr : Player)
