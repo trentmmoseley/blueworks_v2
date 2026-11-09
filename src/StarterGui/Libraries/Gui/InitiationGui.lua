@@ -53,7 +53,7 @@ local ROLE_COLORS    = {
 }
 
 local OBJECTIVES     = {
-    Squadmates       = "COMMENCE DECONTAMINATION",
+    Squadmates       = "NETURALIZE ALL SUBJECTS",
     Subjects         = "ELIMINATE ALL SQUADMATES",
 }
 
