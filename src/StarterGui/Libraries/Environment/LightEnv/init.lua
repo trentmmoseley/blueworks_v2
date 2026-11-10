@@ -33,6 +33,9 @@ local Sounds     = PlayerGui.Sounds.Environment
 local CC         : ColorCorrectionEffect = Lighting:WaitForChild("ColorCorrection")
 local NVLight    = nil
 
+local ATM        = Lighting.Atmosphere
+local Clouds	 = game.Workspace.Terrain.Clouds
+
 -- Vars and consts
 local OUTDOOR_AMBIENT = Color3.fromRGB(59, 59, 84)
 local INDOOR_AMBIENT  = Color3.fromRGB(30, 30, 45)

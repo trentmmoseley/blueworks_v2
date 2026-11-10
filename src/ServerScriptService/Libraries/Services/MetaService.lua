@@ -36,6 +36,15 @@ local function fetchLocation()
     end)
 end
 
+-- Determines season
+local function getSeason(month)
+	if month == 12 then
+		return 1
+    end
+	return math.floor(month / 3) + 1
+end
+
+-- Main function
 function MetaService.KnitInit() : ()
     -- Fetches game version
     local GV = nil
@@ -81,6 +90,11 @@ function MetaService.KnitInit() : ()
             end)
         end
     end)
+
+    -- Server date
+	ServerStats.Date.Month.Value = os.date("%m", game.Workspace:GetServerTimeNow())
+	ServerStats.Date.Day.Value = os.date("%d", game.Workspace:GetServerTimeNow())
+	ServerStats.Date.Season.Value = getSeason(ServerStats.Date.Month.Value)
 end
 
 return MetaService

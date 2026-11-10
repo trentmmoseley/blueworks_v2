@@ -79,13 +79,26 @@ function Template.initItem(item, char)
 		toggleHolding(false)
 	end)
 
-	-- Destroys item if durability is depleted
+	-- Destroys the item if its durability is depleted. If the stack holds extra
+	-- shields, one is consumed and durability resets instead
 	local LastDurability = item:GetAttribute("Durability") or 100
+	local Resetting = false
 	item:GetAttributeChangedSignal("Durability"):Connect(function()
 		local Durability = item:GetAttribute("Durability")
+
 		if Durability == 0 then
-			item:SetAttribute("Stack", 0)
-		else
+			local Stack = item:GetAttribute("Stack") or 1
+			if Stack > 1 then
+				-- Consume one shield from the stack and reset durability. The
+				-- Stack watcher in InventoryService syncs the inventory table.
+				item:SetAttribute("Stack", Stack - 1)
+				Resetting = true
+				item:SetAttribute("Durability", 100)
+				Resetting = false
+			else
+				item:SetAttribute("Stack", 0)
+			end
+		elseif not Resetting then
 			Anims.Block:Play()
 			VMAnim:Fire(UsingPlayer, "START", item.Configuration.Anims.VM.Block.AnimationId)
 		end
@@ -101,7 +114,9 @@ function Template.initItem(item, char)
 			end
 		end
 
-		LastDurability = Durability
+		-- Read the live attribute: the stack-consuming branch above resets it to
+		-- 100 mid-handler, so caching the local would corrupt the next comparison
+		LastDurability = item:GetAttribute("Durability") or 0
 	end)
 	
 	return BaseItem

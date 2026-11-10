@@ -129,6 +129,7 @@ function ResultsGui.Function()
     ResultsScreen:On(function(winner : string, how : string)
         if Player.Team == game.Teams.Spectators then return end
         local WinnerInfo = WINNER_INFO[winner]
+        Sounds.GameEvents.LastNode:Stop()
 
         ResultsShowing = true
         Player:SetAttribute("ResultsActive", true)
