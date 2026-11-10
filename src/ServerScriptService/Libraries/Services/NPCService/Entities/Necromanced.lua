@@ -30,7 +30,7 @@ local SPEEDS        = {
     CHASE           = 32,
 }
 
-local MAX_HEALTH    = 80
+local MAX_HEALTH    = 65
 
 -- Sensing is radial: any hostile within AGGRO_RANGE is detected instantly, even
 -- through walls; the chase holds until the target escapes past LEASH_RANGE.
