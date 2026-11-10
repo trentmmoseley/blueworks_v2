@@ -276,6 +276,8 @@ function CheckpointService:WireButtons(node : Model, ID : number) : ()
                             task.wait(1/4)
                         end
                     end)
+
+                    self.CommsService:SendSubtitle(nil, player, "You found a code", "Cyan")
                 else
                     TweenService:Create(node.Door.Hinge, TweenInfo.new(1), {CFrame = node.Door.Hinge.CFrame * CFrame.Angles(0, math.rad(135), 0)}):Play()
                 end

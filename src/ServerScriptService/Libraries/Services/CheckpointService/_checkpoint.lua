@@ -5,6 +5,7 @@ local RepStorage       = game:GetService("ReplicatedStorage")
 
 local CheckpointS      = _G.Knit.GetService("CheckpointService")
 local CommsService     = _G.Knit.GetService("CommsService")
+local ScoreService     = _G.Knit.GetService("ScoreService")
 
 -- Modules and objects
 local ButtonPress      = require(RepStorage.Remotes.ButtonPress):Server()
@@ -85,6 +86,7 @@ function CheckpointKeypad.WireButtons(node : Model, data : {Input : string}, ID 
                     if codeValid then
                         task.defer(function()
                             CheckpointS:DeregisterCode(Input)
+                            ScoreService:AwardScore(Character, 85, "Code accepted", true)
                         
                             -- Unlocks map if all codes entered
                             local CodesLeft = CheckpointS:CountCodes()

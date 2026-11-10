@@ -1,4 +1,4 @@
-local Switch = {}
+local Switch       = {}
 
 -- Generates random boolean
 local function randomBool(rand : Random) : boolean
