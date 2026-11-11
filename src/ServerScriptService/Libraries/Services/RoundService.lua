@@ -25,7 +25,7 @@ local PNDRInfoRep     = require(RepStorage.Modules.Data.PNDRSubjects)
 local ResultsScreen   = require(RepStorage.Remotes.ResultsScreen):Server()
 
 -- Vars and consts
-local VOTE_DURATION   = 35
+local VOTE_DURATION   = 30
 
 -- Endgame decay: once every Node is calibrated, all subentities (e.g. the
 -- Necromanced) wither away at this much health per second until they die

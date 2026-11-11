@@ -85,7 +85,7 @@ local function updateAmbience()
     RayParams.FilterDescendantsInstances = {Character}
     
     local TheRay = game.Workspace:Raycast(Camera.CFrame.Position, Vector3.new(0, 100, 0), RayParams)
-    isOutside = not ((TheRay and TheRay.Instance and (TheRay.Instance.Transparency < 0.5 or TheRay.Instance:FindFirstAncestor("Platform")) and (TheRay.Instance.CanCollide == true and (not string.find(TheRay.Instance.Name, "_playcicadas")) or TheRay.Instance:FindFirstAncestor("Doors"))))
+    isOutside = not ((TheRay and TheRay.Instance and (TheRay.Instance.Transparency < 0.5 or TheRay.Instance:FindFirstAncestor("Platform")) and not TheRay.Instance:FindFirstAncestor("Streetlights") and TheRay.Instance.Name ~= "_outside" and (TheRay.Instance.CanCollide == true and (not string.find(TheRay.Instance.Name, "_playcicadas")) or TheRay.Instance:FindFirstAncestor("Doors"))))
 
     EnvSounds.AmbienceOutdoor.Volume = isOutside and 1/8 or 0
     EnvSounds.AmbienceIndoor.Volume = not isOutside and 1/8 or 0
@@ -106,7 +106,7 @@ local function updateAmbience()
     end
 
     for _, pr in pairs(TheseParticles.Rain:GetChildren()) do
-        pr.Enabled = isOutside and table.find(RAIN_WEATHERS, WVal.Value)
+        pr.Enabled = isOutside and table.find(RAIN_WEATHERS, WVal.Value) and not GameValues.Bools.doSnow.Value
     end
 
     -- Weather + atmosphere
@@ -127,7 +127,7 @@ local function updateAmbience()
     EnvSounds.Rain.Volume = (table.find(RAIN_WEATHERS, WVal.Value) and isOutside and GameValues.Numbers.Temperature.Value >= 1/3 and not initActive) and 1 or 0
     EnvSounds.Wind.Volume = (WVal.Value == "STORMY" and isOutside and not initActive) and 0.5 or 0
     
-    TheseParticles.Snow.ParticleEmitter.Enabled = false
+    TheseParticles.Snow.ParticleEmitter.Enabled = GameValues.Bools.doSnow.Value and table.find(RAIN_WEATHERS, WVal.Value) and isOutside
 
     -- Updates muffled thunder sounds
     for _, sound : Sound in PlayerGui:GetChildren() do

@@ -21,7 +21,7 @@ function Weather.Init(map)
 
     -- Temperature + time of day
     repeat task.wait() until ServerStats.Date.Season.Value > 0
-    GameStats.Numbers.Temperature.Value = Temps[ServerStats.Date.Season.Value]
+    GameStats.Numbers.Temperature.Value = Temps[ServerStats.Date.Season.Value] + Rand:NextNumber(-1, 1) / 10
 	GameStats.Strings.TimeOfDay.Value = MapEnv.TimeOfDay
 
     -- Weather
