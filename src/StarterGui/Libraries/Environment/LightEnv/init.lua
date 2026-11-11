@@ -20,6 +20,7 @@ local EnvSounds  = PlayerGui.Sounds.Environment
 
 local GameValues = RepStorage.GameValues
 local TimeLeft   = GameValues.Numbers.TimeLeft
+local WVal	     = GameValues.Strings.Weather
 
 local LEInfo	 = require(script.LEInfo)
 local Lerp       = require(RepStorage.Modules.Util.Math.Lerp)
@@ -45,6 +46,8 @@ local NV_DEFAULT      = Color3.fromHSV(0.4, 1, 1)
 local isOutside       = false
 
 local TOGGLE_NV       = "TOGGLE_NV"
+
+local RAIN_WEATHERS   = {"RAINY", "STORMY"}
 
 -- [[ funcs ]] --
 
@@ -86,6 +89,24 @@ local function updateAmbience()
     for _, pr in pairs(TheseParticles.Rain:GetChildren()) do
         pr.Enabled = false
     end
+
+    -- Weather + atmosphere
+    local initActive = Player:GetAttribute("InitiationActive")
+	local WeatherInfo = LEInfo.Weather[GameValues.Strings.Weather.Value]
+
+    -- Atmosphere
+    for name, val in pairs(WeatherInfo.Atmosphere) do
+        ATM[name] = ((name ~= "Density" or isOutside) and not initActive) and val or 0
+    end
+    
+    -- Clouds
+    for name, val in pairs(WeatherInfo.Clouds) do
+        Clouds[name] = val
+    end
+
+    -- Lighting / thunder (if applicable)
+    EnvSounds.Rain.Volume = (table.find(RAIN_WEATHERS, WVal.Value) and isOutside and GameValues.Numbers.Temperature.Value >= 1/3 and not initActive) and 1 or 0
+    EnvSounds.Wind.Volume = (WVal.Value == "STORMY" and isOutside and not initActive) and 0.5 or 0
     
     TheseParticles.Snow.ParticleEmitter.Enabled = false
 end
