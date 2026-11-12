@@ -26,6 +26,15 @@ local Rigs           = RepStorage.Rigs
 
 -- [[ funcs ]] --
 
+-- Removes every AI entity from the game
+function NPCService:RemoveAllNPCs() : ()
+    for _, char in game.Workspace:WaitForChild("Characters"):GetChildren() do
+        if char:GetAttribute("isNPC") == true then
+            char:Destroy()
+        end
+    end
+end
+
 -- Creates NPC
 function NPCService:CreateNPC(name : string, cf : CFrame) : Model
     local Rig = Rigs[name].Skins._default._rig:Clone()

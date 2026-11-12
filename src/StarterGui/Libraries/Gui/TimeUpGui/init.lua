@@ -21,9 +21,22 @@ local TimeUpEvent    = require(RepStorage.Remotes.TimeUp):Client()
 
 -- [[ funcs ]] --
 
+-- Toggles the sequence movement lock. Subject sequences that require
+-- navigation (e.g. Proxy) can lift it by calling this with false
+function TimeUpGui.SetMovementLocked(locked : boolean) : ()
+    Player:SetAttribute("MovementLocked", locked)
+end
+
 -- Main function
 function TimeUpGui.Function()
+    -- A new character always starts unlocked
+    Player.CharacterAdded:Connect(function()
+        TimeUpGui.SetMovementLocked(false)
+    end)
+
     TimeUpEvent:On(function(entity : number)
+        TimeUpGui.SetMovementLocked(true)
+
         TheGui.Enabled = true
         Sounds.Electricity:Play()
         task.wait(0.25)

@@ -7,7 +7,10 @@ local NVService       = Knit.CreateService({
     Name = "NightVisionService",
     Client = {
         NVToggle  = Knit.CreateSignal(),
-    }
+    },
+
+    -- When true, night vision is off for everyone and can no longer be toggled
+    Disabled = false,
 })
 
 -- [[ funcs ]] --
@@ -21,6 +24,19 @@ function NVService:ToggleNV(class : {}, on : boolean?)
     end
 end
 
+-- Permanently disables night vision: active goggles are turned off and all
+-- further toggle requests are ignored
+function NVService:Disable() : ()
+    self.Disabled = true
+
+    for _, class in self.CharService:GetAllCharClasses() do
+        local NVClass = class.NVClass
+        if NVClass and NVClass.doNightVision then
+            NVClass:Toggle(false)
+        end
+    end
+end
+
 -- On knit init completion
 function NVService:KnitInit() : ()
     self.CharService = _G.Knit.GetService("CharService")
@@ -28,6 +44,7 @@ function NVService:KnitInit() : ()
 
     -- On NV toggle
     self.Client.NVToggle:Connect(function(player : Player)
+        if self.Disabled then return end
         if player.Team ~= game.Teams.Squadmates then return end
         if player:GetAttribute("InitiationActive") == true then return end
         local Character = player.Character or player.CharacterAdded:Wait()

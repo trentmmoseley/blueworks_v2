@@ -25,14 +25,14 @@ local PNDRInfoRep     = require(RepStorage.Modules.Data.PNDRSubjects)
 local ResultsScreen   = require(RepStorage.Remotes.ResultsScreen):Server()
 
 -- Vars and consts
-local VOTE_DURATION   = 30
+local VOTE_DURATION   = 15
 
 -- Endgame decay: once every Node is calibrated, all subentities (e.g. the
 -- Necromanced) wither away at this much health per second until they die
 local SUBENTITY_DECAY = 2
 
 local TIME_LIMITS     = {
-    Classic           = 60 * 15
+    Classic           = 15
 }
 
 local RESULT_MSGS     = {
@@ -200,9 +200,11 @@ function RoundService:Classic() : (string, string)
         end
         TimeLeft:SetAttribute("TimeElapsed", TimeElapsed)
 
-        -- Time up: every remaining Squadmate is Lost, then the Subjects win
+        -- Time up: every remaining Squadmate is Lost, night vision dies for
+        -- good, then the Subjects win
         if TimeLeft.Value == 0 then
             self:MarkSquadmatesLost()
+            self.NightVisionService:Disable()
             Winner = "Subjects"
             Outcome = "TIME_UP"
         end
@@ -275,6 +277,12 @@ function RoundService:Classic() : (string, string)
 
     repeat task.wait() until not MainConn
 
+    -- Time up: every AI entity leaves the game; the Time Up sequences act
+    -- through client-side rigs instead
+    if Outcome == "TIME_UP" then
+        self.NPCService:RemoveAllNPCs()
+    end
+
     -- Announces result
 	if RESULT_MSGS[Winner] then
 		self.StraySoundService:GlobalSound("GlobalAnn")
@@ -336,6 +344,7 @@ function RoundService:KnitInit()
     self.VoteService = _G.Knit.GetService("VoteService")
     self.NPCService = _G.Knit.GetService("NPCService")
     self.SequenceService = _G.Knit.GetService("SequenceService")
+    self.NightVisionService = _G.Knit.GetService("NightVisionService")
 
     -- Results state ends when the character is reloaded
     local function watchPlayer(plr : Player)
