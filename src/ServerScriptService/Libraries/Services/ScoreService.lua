@@ -104,6 +104,15 @@ function ScoreService:OnDeath(class : {}) : ()
     self:PushProfiles()
 end
 
+-- Marks a player's profile as dead without a character death (e.g. Lost Squadmates)
+function ScoreService:MarkPlayerDead(player : Player) : ()
+    local Profile = self.Profiles[player.UserId]
+    if not Profile then return end
+
+    Profile.Status = "DEAD"
+    self:PushProfiles()
+end
+
 -- Manages player
 function ScoreService:ManagePlayer(player : Player)
     self:ResetPlayer(player)

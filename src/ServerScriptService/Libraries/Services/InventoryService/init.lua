@@ -405,6 +405,7 @@ function InvService:KnitInit() : ()
         local ActionRequest = nil
         ActionRequest = self.Client.ActionRequest:Connect(function(player, action, ...)
             if player ~= Player or player.Team ~= game.Teams.Squadmates then return end
+            if player:GetAttribute("Lost") == true then return end
             if char:GetAttribute("isGrabbed") == true then return end
             if (char:GetAttribute("NodeID") or 0) ~= 0 then return end
 
@@ -468,10 +469,19 @@ function InvService:KnitInit() : ()
 
         -- Collecting item
         self.ItemAdded:Connect(function(p : Player, index : number)
-            if Player and p == Player and char:GetAttribute("isGrabbed") ~= true and (InvClass.CurrentSlot or InvClass.CurrentSlot == index) then
+            if Player and p == Player and Player:GetAttribute("Lost") ~= true and char:GetAttribute("isGrabbed") ~= true and (InvClass.CurrentSlot or InvClass.CurrentSlot == index) then
                 swapItem(index, true)
             end
         end)
+
+        -- Lost (undergoing a sequence): force-holster the held item
+        if Player then
+            Player:GetAttributeChangedSignal("Lost"):Connect(function()
+                if Player:GetAttribute("Lost") == true then
+                    swapItem(0, true)
+                end
+            end)
+        end
 
         -- Downed
         char:GetAttributeChangedSignal("isDowned"):Connect(function()

@@ -32,7 +32,7 @@ local VOTE_DURATION   = 30
 local SUBENTITY_DECAY = 2
 
 local TIME_LIMITS     = {
-    Classic           = 60 * 15
+    Classic           = 30
 }
 
 local RESULT_MSGS     = {
@@ -170,6 +170,18 @@ function RoundService:SpawnVoting() : ()
     end
 end
 
+-- Marks every remaining Squadmate as Lost: they stop counting for the round and
+-- each client is told to start the Time Up sequence
+function RoundService:MarkSquadmatesLost() : ()
+    for _, char in self.TeamService:GetTeamMembers("Squadmates") or {} do
+        local Player = Players:GetPlayerFromCharacter(char)
+        if Player then
+            local EntityCode = self.Subjects[math.random(1, #self.Subjects)]
+            self.SequenceService:MarkLost(Player, EntityCode)
+        end
+    end
+end
+
 -- Main round loop
 function RoundService:Classic() : (string, string)
     Status.Value = "Mission in progress"
@@ -188,16 +200,26 @@ function RoundService:Classic() : (string, string)
         end
         TimeLeft:SetAttribute("TimeElapsed", TimeElapsed)
 
-        -- Time up
+        -- Time up: every remaining Squadmate is Lost, then the Subjects win
         if TimeLeft.Value == 0 then
+            self:MarkSquadmatesLost()
             Winner = "Subjects"
             Outcome = "TIME_UP"
         end
 
-        -- Squadmates wiped out
-        if #self.TeamService:GetTeamMembers("Squadmates") == 0 then
-            Winner = "Subjects"
-            Outcome = "SQUADMATES_WIPED"
+        -- Squadmates wiped out; Lost Squadmates are no longer counted
+        if Winner == "" then
+            local SquadmatesLeft = 0
+            for _, char in self.TeamService:GetTeamMembers("Squadmates") or {} do
+                if not self.SequenceService:IsLost(char) then
+                    SquadmatesLeft += 1
+                end
+            end
+
+            if SquadmatesLeft == 0 then
+                Winner = "Subjects"
+                Outcome = "SQUADMATES_WIPED"
+            end
         end
 
         -- Subentities
@@ -272,9 +294,11 @@ function RoundService:Classic() : (string, string)
 
     Status.Value = "Mission over"
 
-    -- Prepares players for the results screen: freezes them, disables NV and clears effects
+    -- Prepares players for the results screen: freezes them, disables NV and clears
+    -- effects. Lost Squadmates are skipped: they are undergoing their Time Up
+    -- sequence instead of viewing the results
     for _, plr in Players:GetPlayers() do
-        if plr.Team ~= game.Teams.Spectators then
+        if plr.Team ~= game.Teams.Spectators and not self.SequenceService:IsLost(plr) then
             plr:SetAttribute("ResultsActive", true)
 
             local Character = plr.Character
@@ -295,7 +319,10 @@ function RoundService:Classic() : (string, string)
         end
     end
 
-    ResultsScreen:FireAll(Winner, Outcome)
+    -- Lost Squadmates never see the results screen
+    ResultsScreen:FireWithFilter(function(plr : Player)
+        return not self.SequenceService:IsLost(plr)
+    end, Winner, Outcome)
     return Winner, Outcome
 end
 
@@ -308,6 +335,7 @@ function RoundService:KnitInit()
     self.HealthService = _G.Knit.GetService("HealthService")
     self.VoteService = _G.Knit.GetService("VoteService")
     self.NPCService = _G.Knit.GetService("NPCService")
+    self.SequenceService = _G.Knit.GetService("SequenceService")
 
     -- Results state ends when the character is reloaded
     local function watchPlayer(plr : Player)
