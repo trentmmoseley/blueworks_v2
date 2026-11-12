@@ -35,6 +35,7 @@ function PunchService:KnitInit() : ()
         local Character = player.Character or player.CharacterAdded:Wait()
         if not Character or Character:GetAttribute("isGrabbed") == true then return end
         if player:GetAttribute("InitiationActive") == true then return end
+        if player:GetAttribute("Lost") == true then return end
         if (Character:GetAttribute("NodeID") or 0) > 0 then return end
 
         -- Distance check to ensure hit was valid

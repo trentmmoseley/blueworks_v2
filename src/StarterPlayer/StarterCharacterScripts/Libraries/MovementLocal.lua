@@ -183,7 +183,7 @@ function MovementLocal.Function()
                     end
                 end
             end
-            local UsedSpeed = MMT_SETTINGS[Character:GetAttribute("MovementType")].Speed * (SlidingInfo and SlidingInfo.Speed or 1)
+            local UsedSpeed = MMT_SETTINGS[Character:GetAttribute("MovementType")].Speed * (SlidingInfo and SlidingInfo.Speed or 1) * (Player:GetAttribute("Lost") == true and 2/3 or 1)
             local TargetVelocity = WishDir * UsedSpeed
 
             -- Accelerate towards target velocity
@@ -226,7 +226,7 @@ function MovementLocal.Function()
                 Humanoid:Move(Vector3.zero, false)
             end
 
-            Humanoid.JumpHeight = Character:GetAttribute("Stamina") >= 20 and (MMT_SETTINGS[MovementType].canJump and 3 or 0) or 0
+            Humanoid.JumpHeight = Player:GetAttribute("Lost") ~= true and Character:GetAttribute("Stamina") >= 20 and (MMT_SETTINGS[MovementType].canJump and 3 or 0) or 0
 
             WindSound.Volume = math.abs(Character.PrimaryPart.AssemblyLinearVelocity.Y / 100) ^ 3
 			WindSound.PlaybackSpeed = Lerp(0.75, 1.5, Progress(WindSound.Volume, 0, 1))

@@ -306,8 +306,8 @@ local function runInitiation(voteName : string, voteInfo : {}) : ()
         if vote ~= voteName then return end
         LatestInfo = info
 
-        Sounds.VoteBeep.PlaybackSpeed = Rand:NextNumber(0.95, 1.05)
-        Sounds.VoteBeep:Play()
+        InitiationSFX.VoteBeep.PlaybackSpeed = Rand:NextNumber(0.95, 1.05)
+        InitiationSFX.VoteBeep:Play()
     end)
 
     local EndConn = VoteService.VoteEnded:Connect(function(vote : string, winner : any)

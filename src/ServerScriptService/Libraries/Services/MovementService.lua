@@ -50,6 +50,7 @@ function MovementService:KnitInit() : ()
             if Character:GetAttribute("isGrabbed") == true then return end
             if player:GetAttribute("ResultsActive") == true then return end
             if player:GetAttribute("InitiationActive") == true then return end
+            if mmt == "RUN" and player:GetAttribute("Lost") == true then return end
 
             local Humanoid = Character:FindFirstChildOfClass("Humanoid")
             local CharClass = CharService:GetCharacterClass(Character)

@@ -84,6 +84,22 @@ function SequenceService:MarkLost(player : Player, entity : number?) : ()
         NVClass:Toggle(false)
     end
 
+    -- The sequence plays out in full: health is topped off and every effect is cleared
+    if Character then
+        self.HealthService:Heal(Character, Character:GetAttribute("MaxHealth") or 0)
+
+        -- Lost players cannot run
+        if Character:GetAttribute("MovementType") == "RUN" then
+            Character:SetAttribute("MovementType", "WALK")
+        end
+    end
+
+    if CharClass and CharClass.EffectClass then
+        for effect, _ in CharClass.EffectClass.Effects do
+            self.EffectService:Remove(Character, effect)
+        end
+    end
+
     TimeUpEvent:Fire(player, entity or 0)
 
     self.PlayerLost:Fire(player, Character, entity)
@@ -93,6 +109,8 @@ end
 function SequenceService:KnitInit() : ()
     self.ScoreService = _G.Knit.GetService("ScoreService")
     self.CharService = _G.Knit.GetService("CharService")
+    self.HealthService = _G.Knit.GetService("HealthService")
+    self.EffectService = _G.Knit.GetService("EffectService")
 
     Players.PlayerRemoving:Connect(function(player : Player)
         self.Lost[player] = nil

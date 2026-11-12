@@ -134,6 +134,14 @@ local function updateAmbience()
         if not sound:IsA("Sound") or sound.Name ~= "Thunder" or not sound:FindFirstChild("EqualizerSoundEffect") then continue end
         sound:FindFirstChildOfClass("EqualizerSoundEffect").Enabled = not isOutside
     end
+
+    -- Lost players (Time Up sequences) hear nothing at all
+    if Player:GetAttribute("Lost") == true then
+        EnvSounds.AmbienceOutdoor.Volume = 0
+        EnvSounds.AmbienceIndoor.Volume = 0
+        EnvSounds.Rain.Volume = 0
+        EnvSounds.Wind.Volume = 0
+    end
 end
 
 -- Gets desired ambient lighting
@@ -169,11 +177,13 @@ local function updateLighting()
         CC.TintColor = NV_DEFAULT
     end
 
-    -- Lighting if applicable
-    if os.clock() >= NextLightning and WVal.Value == "STORMY" then
+    -- Lighting if applicable (silent for Lost players)
+    if os.clock() >= NextLightning and WVal.Value == "STORMY" and Player:GetAttribute("Lost") ~= true then
         NextLightning = os.clock() + Rand:NextNumber(5, 45)
 
         task.delay(Rand:NextNumber() * 10, function()
+            if Player:GetAttribute("Lost") == true then return end
+
             local ChosenSound = THUNDER_SOUNDS[math.random(1, #THUNDER_SOUNDS)]
             local NewSound = Instance.new("Sound")
             NewSound.Name = "Thunder"
@@ -232,6 +242,22 @@ function LightEnv.Function()
     -- Night vision
     CAS:BindAction(TOGGLE_NV, toggleNightVision, false, Enum.KeyCode[DataC:Get("Keybinds.NightVision.Keyboard")], Enum.KeyCode[DataC:Get("Keybinds.NightVision.Gamepad")])
     Character:GetAttributeChangedSignal("doNightVision"):Connect(updateLighting)
+
+    -- The world goes dead silent the moment the player is Lost
+    Player:GetAttributeChangedSignal("Lost"):Connect(function()
+        if Player:GetAttribute("Lost") ~= true then return end
+
+        EnvSounds.AmbienceOutdoor.Volume = 0
+        EnvSounds.AmbienceIndoor.Volume = 0
+        EnvSounds.Rain.Volume = 0
+        EnvSounds.Wind.Volume = 0
+
+        for _, sound : Sound in PlayerGui:GetChildren() do
+            if sound:IsA("Sound") and sound.Name == "Thunder" then
+                sound:Stop()
+            end
+        end
+    end)
 end
 
 return LightEnv

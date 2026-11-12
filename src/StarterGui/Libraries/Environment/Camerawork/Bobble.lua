@@ -132,10 +132,13 @@ function Bobble.Function(dt)
 		local LastLeanVal = Character:GetAttribute("isLeaning") and Character:GetAttribute("LeanDirection") or nil
 		local HumanoidHealthTilt = Progress(Humanoid.Health, Humanoid.MaxHealth, 0)
 
+		-- Lost players sway as if physically handicapped
+		local LostRoll = Player:GetAttribute("Lost") == true and TrigWave("sin", 10 * (2/3), 45, os.clock(), 0, 0) or 0
+
         CameraTilt = CameraTilt:Lerp(CFrame.Angles(
 			math.rad(FDSpring.Position.X) + math.rad(PDSpring.Position.X),
-			math.rad(PDSpring.Position.Y), 
-			math.rad(FDSpring.Position.Z) - math.rad(Direction.X  * 3) - math.rad(Direction.X * 4.5) + math.rad(LastLeanVal and 15 * (LastLeanVal == "L" and 1 or -1) or 0) + math.rad(TrigWave("sin", math.max(Character:GetAttribute("isDowned") and 10 or 0), 30, os.clock(), 0, 0)) + math.rad(HumanoidHealthTilt * 5) + math.rad(Character:GetAttribute("isGrabbed") == true and -20 or 0)) * CFrame.new(LastLeanVal and 1.75 * (LastLeanVal == "L" and -1 or 1) or 0, 0, 0), QuarterLerp / 2)
+			math.rad(PDSpring.Position.Y),
+			math.rad(FDSpring.Position.Z) - math.rad(Direction.X  * 3) - math.rad(Direction.X * 4.5) + math.rad(LastLeanVal and 15 * (LastLeanVal == "L" and 1 or -1) or 0) + math.rad(TrigWave("sin", math.max(Character:GetAttribute("isDowned") and 10 or 0), 30, os.clock(), 0, 0)) + math.rad(HumanoidHealthTilt * 5) + math.rad(Character:GetAttribute("isGrabbed") == true and -20 or 0) + math.rad(LostRoll)) * CFrame.new(LastLeanVal and 1.75 * (LastLeanVal == "L" and -1 or 1) or 0, 0, 0), QuarterLerp / 2)
 
         if isMoving then
             local BobLevel = TrigWave("sin", MmtInfo["MaxAngle"], MmtInfo["BobB"] * 2, os.clock(), 0, 0) * (inAir and 0 or 1/30)
