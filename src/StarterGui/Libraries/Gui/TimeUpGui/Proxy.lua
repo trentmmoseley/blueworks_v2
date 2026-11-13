@@ -20,6 +20,7 @@ local Sounds       = PlayerGui.Sounds.OutOfTime.Proxy
 
 local AttackVPF    = TheGui.AttackVPF
 local BloodEffects = TheGui.BloodEffects
+local ProxyADialog = TheGui.ProxyADialog
 local Camera       = game.Workspace.CurrentCamera
 
 local VFX          = RepStorage.VFX.TimeUp.Proxy
@@ -32,6 +33,14 @@ local ATTACK_ANIMS = {97633645023236, 126985686457998, 123162586564812, 94060623
 -- Same swing/stab sound pools as the Proxy NPC
 local SWING_SOUNDS = {7801336419, 7801329626}
 local STAB_SOUNDS  = {18512265986, 18512270266}
+
+local PROXY_A_MSGS = {
+    {
+        "Who goes there?",
+        "Do not answer that; I already know.",
+        "Come, player_name, but do not face me.",
+    },
+}
 
 -- Main function
 function Proxy.UI()
@@ -166,7 +175,7 @@ function Proxy.UI()
 
     -- The darkness lifts: the flash fades back out so the environment shows again
     if FlashEffect then
-        TweenService:Create(FlashEffect, TweenInfo.new(6, Enum.EasingStyle.Circular, Enum.EasingDirection.InOut), {Brightness = 0, TintColor = Color3.fromHSV(2/3, 1/2, 1), Saturation = -0.5, Contrast = 0.125}):Play()
+        TweenService:Create(FlashEffect, TweenInfo.new(6, Enum.EasingStyle.Circular, Enum.EasingDirection.InOut), {Brightness = 0, TintColor = Color3.fromHSV(0.4, 1/2, 1), Saturation = -0.25, Contrast = -0.25}):Play()
     end
 
     -- The fall in reverse: the player rises from face-down on the floor (as if
@@ -200,6 +209,21 @@ function Proxy.UI()
     repeat task.wait() until not RiseConn
 
     require(script.Parent).SetMovementLocked(false)
+
+    task.wait(3)
+
+    -- Beckons player to approach
+    for _, msg in PROXY_A_MSGS[1] do
+        Sounds.Whispers.Volume = 1
+        local UsedMessage = msg:gsub("player_name", Player.Name)
+        for i = 1, #UsedMessage do
+            ProxyADialog.Text = UsedMessage:sub(1, i)
+            Sounds.Whispers.TimePosition = Rand:NextNumber() * Sounds.Whispers.TimeLength
+            task.wait(1/30)
+        end
+        Sounds.Whispers.Volume = 0
+        task.wait(3)
+    end
 end
 
 return Proxy
