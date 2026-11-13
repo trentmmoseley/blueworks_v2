@@ -52,7 +52,7 @@ function TimeUpGui.Function()
         Sounds.PowerOutageBase:Play()
 
         task.wait(0.05)
-        TweenService:Create(Flash, TweenInfo.new(1/2, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {Brightness = -1, Contrast = 0, Saturation = 0}):Play()
+        TweenService:Create(Flash, TweenInfo.new(1/2, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {Brightness = -1.25, Contrast = 0, Saturation = 0}):Play()
 
         task.wait(12)
         require(script[PNDRSubjects[entity].Name]).UI()
