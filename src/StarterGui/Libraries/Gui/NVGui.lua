@@ -31,8 +31,11 @@ local function toggleUI()
         NVSounds.Activate.Whirr.TimePosition = 1/5
         NVSounds.Activate.Whirr:Play()
     else
-        NVSounds.Deactivate.TimePosition = 0.5
-        NVSounds.Deactivate:Play()
+        -- Force-disabled goggles (e.g. upon being Lost) power down silently
+        if Player:GetAttribute("Lost") ~= true then
+            NVSounds.Deactivate.TimePosition = 0.5
+            NVSounds.Deactivate:Play()
+        end
     end
 end
 

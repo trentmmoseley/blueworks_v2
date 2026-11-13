@@ -48,6 +48,12 @@ local function calculateAngle(center, point)
 	return Angle
 end
 
+-- Health shown on screen; sequences can fake it without touching real health
+-- (e.g. the Proxy's stab reads as 1 HP while the player stays at max)
+local function apparentHealth() : number
+    return Character:GetAttribute("ApparentHealth") or Character:GetAttribute("Health")
+end
+
 -- Main function
 function HEALTHEffects.Function()
 	local HealthCC = Lighting:FindFirstChild("HealthCC")
@@ -83,7 +89,7 @@ function HEALTHEffects.Function()
             if Player:GetAttribute("ResultsActive") == true then return end
 
             local QuarterLerp = LerpByFrame(1/4, dt)
-            local Percentage = Character:GetAttribute("Health") / Character:GetAttribute("MaxHealth")
+            local Percentage = apparentHealth() / Character:GetAttribute("MaxHealth")
 
             -- Indicators
             for _, ind in pairs(TheGui.Frame.DamageCrosshair:GetChildren()) do
@@ -119,9 +125,9 @@ function HEALTHEffects.Function()
 
             HealthCC.TintColor = Color3.fromHSV(1, Sounds.Heartbeat.PlaybackLoudness * Sounds.Heartbeat.Volume / 1000 + (1 - Percentage) / 5, 1)
             HealthCC.Contrast = Lerp(0, 3/8, 1 - Percentage)
-            HealthCC.Saturation = Lerp(0, -1, Progress(Humanoid.Health, Humanoid.MaxHealth, 0))
+            HealthCC.Saturation = Lerp(0, -1, Progress(apparentHealth(), Humanoid.MaxHealth, 0))
 
-            HealthDOF.FarIntensity = (1 - Humanoid.Health / Humanoid.MaxHealth)
+            HealthDOF.FarIntensity = (1 - apparentHealth() / Humanoid.MaxHealth)
             HealthDOF.InFocusRadius = 500 * (1 - HealthDOF.FarIntensity) ^ 6
 
             local StaticTransparency = Lerp(1, 0.9, (1 - Percentage) ^ 4)

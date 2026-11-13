@@ -94,6 +94,9 @@ function Proxy.UI()
     PlaySound(SWING_SOUNDS[math.random(1, #SWING_SOUNDS)], "Swing", Character.PrimaryPart, nil, 1, Rand:NextNumber(0.95, 1.05))
     PlaySound(STAB_SOUNDS[math.random(1, #STAB_SOUNDS)], "Stab", Character.PrimaryPart, nil, 1, Rand:NextNumber(0.95, 1.05))
 
+    -- The stab takes its toll: health effects read as 25 HP from here on
+    Character:SetAttribute("ApparentHealth", 25)
+
     Sounds.Captured1:Play()
     Sounds.Captured2:Play()
     Sounds.Captured3:Play()
@@ -189,7 +192,7 @@ function Proxy.UI()
     end)
 
     for _, image in BloodEffects:GetChildren() do
-        TweenService:Create(image, TweenInfo.new(1/2), {ImageTransparency = image.Name ~= "Blood" and 0.5 or 0.75}):Play()
+        TweenService:Create(image, TweenInfo.new(1/2), {ImageTransparency = image.Name ~= "Blood" and 1 or 0.875}):Play()
     end
     TweenService:Create(TheGui._static, TweenInfo.new(6), {ImageTransparency = 3/4}):Play()
     TweenService:Create(Sounds.Ambience, TweenInfo.new(6), {Volume = 1/4}):Play()
