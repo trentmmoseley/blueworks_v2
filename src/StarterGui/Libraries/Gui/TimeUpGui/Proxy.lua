@@ -29,10 +29,17 @@ local PlaySound    = require(RepStorage.Modules.Util.PlaySound)
 
 -- Vars and consts
 local ATTACK_ANIMS = {97633645023236, 126985686457998, 123162586564812, 94060623091801}
+local APPARITION_ANIMS = {111063195083589, 105550397128337, 138405552391268}
 
 -- Same swing/stab sound pools as the Proxy NPC
 local SWING_SOUNDS = {7801336419, 7801329626}
 local STAB_SOUNDS  = {18512265986, 18512270266}
+
+local APPARITION_COUNT        = 30
+local APPARITION_RADIUS       = 40 -- studs around the player an apparition may spawn within
+local APPARITION_MIN_RADIUS   = 5  -- keeps apparitions from spawning inside the player
+local APPARITION_FADE_TIME    = 20 -- seconds spent fading into view
+local APPARITION_TRANSPARENCY = 1/4
 
 local PROXY_A_MSGS = {
     {
@@ -61,9 +68,72 @@ local PROXY_A_MSGS = {
         "...how it looks.",
     },
     {
-        "Look at my face.",
+        "Look into my eyes.",
     }
 }
+
+-- The souls line: the apparitions are summoned the moment it begins writing
+local APPARITION_TRIGGER_MSG = PROXY_A_MSGS[2][10]
+
+-- Summons the apparitions: thirty ghosts (cloned from the Apparition templates
+-- stored alongside Platform) ring the player, each playing a random looped
+-- animation and fading into view over twenty seconds
+local function summonApparitions()
+
+    local CharRoot = Character.PrimaryPart
+    if not CharRoot then
+        return
+    end
+    local Center = CharRoot.CFrame.Position
+
+    for _ = 1, APPARITION_COUNT do
+        local Apparition = VFX.Apparition:Clone()
+
+        local Angle    = Rand:NextNumber() * math.pi * 2
+        local Distance = Rand:NextNumber(APPARITION_MIN_RADIUS, APPARITION_RADIUS) * (math.random(0, 1) == 0 and 1 or -1)
+        local SpawnPos = Center + Vector3.new(math.cos(Angle) * Distance, 0, math.sin(Angle) * Distance)
+
+        Apparition:PivotTo(CFrame.lookAt(SpawnPos, Vector3.new(Center.X, SpawnPos.Y, Center.Z)))
+
+        for _, desc in Apparition:GetDescendants() do
+            if desc:IsA("BasePart") then
+                desc.Anchored = true
+                desc.CanCollide = false
+                desc.Transparency = 1
+                if desc.Name ~= "HumanoidRootPart" and not desc.Parent.Name ~= "HolsterSystem" then
+                    TweenService:Create(desc, TweenInfo.new(APPARITION_FADE_TIME), {Transparency = APPARITION_TRANSPARENCY}):Play()
+                end
+            elseif desc:IsA("Decal") or desc:IsA("Texture") then
+                desc.Transparency = 1
+                TweenService:Create(desc, TweenInfo.new(APPARITION_FADE_TIME), {Transparency = APPARITION_TRANSPARENCY}):Play()
+            end
+        end
+
+        Apparition.Parent = game.Workspace
+
+        -- The rig must be in the DataModel before its track starts, or the
+        -- animation never visually plays; ghost rigs may animate through a
+        -- Humanoid or a bare AnimationController, so either hosts the Animator
+        local AnimHost = Apparition:FindFirstChildOfClass("Humanoid") or Apparition:FindFirstChildOfClass("AnimationController")
+        if AnimHost then
+            local Animator = AnimHost:FindFirstChildOfClass("Animator")
+            if not Animator then
+                Animator = Instance.new("Animator")
+                Animator.Parent = AnimHost
+            end
+
+            local Anim = Instance.new("Animation")
+            Anim.AnimationId = "rbxassetid://"..APPARITION_ANIMS[Rand:NextInteger(1, #APPARITION_ANIMS)]
+
+            local ApparitionTrack = Animator:LoadAnimation(Anim)
+            ApparitionTrack.Priority = Enum.AnimationPriority.Action4
+            ApparitionTrack.Looped = true
+            Anim:Destroy()
+
+            ApparitionTrack:Play()
+        end
+    end
+end
 
 -- Main function
 function Proxy.UI()
@@ -257,6 +327,12 @@ function Proxy.UI()
         if otherpart:FindFirstAncestor(Character.Name) then
             hasHitTrigger = true
             for _, msg in PROXY_A_MSGS[2] do
+                -- The souls line: summons the apparitions and roots the player in place
+                if msg == APPARITION_TRIGGER_MSG then
+                    require(script.Parent).SetMovementLocked(true)
+                    task.spawn(summonApparitions)
+                end
+
                 Sounds.Whispers.Volume = 1
                 local UsedMessage = msg:gsub("player_name", Player.Name)
                 for i = 1, #UsedMessage do
