@@ -38,8 +38,31 @@ local PROXY_A_MSGS = {
     {
         "Who goes there?",
         "Do not answer that; I already know.",
-        "Come, player_name, but do not face me.",
+        "He sent you here; I saw it.",
+        "A very charming personality, is he not?",
+        "Come, player_name, and face the door.",
     },
+    {
+        "Before we meet, take a look around you.",
+        "Most humans are not meant to be here.",
+        "But from this point forward, this is your home...",
+        "...and I am your host.",
+        "You are the latest of select souls I have deemed worthy...",
+        "...to join me in eternal slumber.",
+        "I generally do not acknowledge mortals, but your tenacity was frankly adorable.",
+        "I have deemed you worthy enough for adoption in waiting for my time to arise...",
+        "and devour your planet.",
+        "The souls that surround you have been here for thousands, millions, if not billions of years,",
+        "and shall wait a forever more here with me in my world.",
+        "And you have just become one of them.",
+        "I will teach you the essense of eternity --",
+        "how it feels, and how it works.",
+        "But first, I must show you...",
+        "...how it looks.",
+    },
+    {
+        "Look at my face.",
+    }
 }
 
 -- Main function
@@ -208,22 +231,44 @@ function Proxy.UI()
 
     repeat task.wait() until not RiseConn
 
-    require(script.Parent).SetMovementLocked(false)
-
     task.wait(3)
 
     -- Beckons player to approach
-    for _, msg in PROXY_A_MSGS[1] do
+    for i, msg in PROXY_A_MSGS[1] do
         Sounds.Whispers.Volume = 1
         local UsedMessage = msg:gsub("player_name", Player.Name)
-        for i = 1, #UsedMessage do
-            ProxyADialog.Text = UsedMessage:sub(1, i)
+        for j = 1, #UsedMessage do
+            ProxyADialog.Text = UsedMessage:sub(1, j)
             Sounds.Whispers.TimePosition = Rand:NextNumber() * Sounds.Whispers.TimeLength
             task.wait(1/30)
         end
         Sounds.Whispers.Volume = 0
+
+        if i == #PROXY_A_MSGS[1] then
+            require(script.Parent).SetMovementLocked(false)
+        end
+
         task.wait(3)
     end
+
+    local hasHitTrigger = false
+    Platform:WaitForChild("Stage2Trigger").Touched:Connect(function(otherpart)
+        if hasHitTrigger then return end
+        if otherpart:FindFirstAncestor(Character.Name) then
+            hasHitTrigger = true
+            for _, msg in PROXY_A_MSGS[2] do
+                Sounds.Whispers.Volume = 1
+                local UsedMessage = msg:gsub("player_name", Player.Name)
+                for i = 1, #UsedMessage do
+                    ProxyADialog.Text = UsedMessage:sub(1, i)
+                    Sounds.Whispers.TimePosition = Rand:NextNumber() * Sounds.Whispers.TimeLength
+                    task.wait(1/30)
+                end
+                Sounds.Whispers.Volume = 0
+                task.wait(3)
+            end
+        end
+    end)
 end
 
 return Proxy
