@@ -40,6 +40,8 @@ local APPARITION_RADIUS       = 40 -- studs around the player an apparition may 
 local APPARITION_MIN_RADIUS   = 5  -- keeps apparitions from spawning inside the player
 local APPARITION_FADE_TIME    = 20 -- seconds spent fading into view
 local APPARITION_TRANSPARENCY = 1/4
+local APPARITION_EXIT_FADE    = 1/2 -- seconds spent fading back out once the final line is written
+local APPARITION_EXIT_SOUND   = 9126228629 -- the Proxy NPC's Exit Retreat sound
 
 local PROXY_A_MSGS = {
     {
@@ -74,6 +76,16 @@ local PROXY_A_MSGS = {
 
 -- The souls line: the apparitions are summoned the moment it begins writing
 local APPARITION_TRIGGER_MSG = PROXY_A_MSGS[2][10]
+
+-- Seconds the second batch takes to write: each character takes 1/30s and each
+-- message pauses for three seconds, matching the writing loop below
+local BATCH_2_DURATION = 0
+for _, msg in PROXY_A_MSGS[2] do
+    BATCH_2_DURATION += #msg / 30 + 3
+end
+
+-- Every apparition currently summoned, so they can be dismissed together
+local Apparitions = {}
 
 -- Summons the apparitions: thirty ghosts (cloned from the Apparition templates
 -- stored alongside Platform) ring the player, each playing a random looped
@@ -132,7 +144,28 @@ local function summonApparitions()
 
             ApparitionTrack:Play()
         end
+
+        table.insert(Apparitions, Apparition)
     end
+end
+
+-- Dismisses the apparitions: a quick half-second fade, then the rigs are removed
+local function despawnApparitions()
+    for _, Apparition in Apparitions do
+        if Apparition.Parent then
+            for _, desc in Apparition:GetDescendants() do
+                if desc:IsA("BasePart") or desc:IsA("Decal") or desc:IsA("Texture") then
+                    TweenService:Create(desc, TweenInfo.new(APPARITION_EXIT_FADE), {Transparency = 1}):Play()
+                end
+            end
+
+            task.delay(APPARITION_EXIT_FADE, function()
+                Apparition:Destroy()
+            end)
+        end
+    end
+
+    table.clear(Apparitions)
 end
 
 -- Main function
@@ -140,6 +173,17 @@ function Proxy.UI()
     -- Summons the Platform and places the player upon its Spawnpoint
     local Platform = VFX.Platform:Clone()
     Platform.Parent = game.Workspace
+    
+    -- Tendrils
+    for _, tendril in Platform.TendrilHead.Tendrils:GetChildren() do
+        local Anim = Instance.new("Animation")
+        Anim.AnimationId = "rbxassetid://123725938975640"
+        local AnimController : AnimationController = tendril.AnimationController
+        local LoadedAnim : AnimationTrack = AnimController:LoadAnimationAsync(Anim)
+        LoadedAnim:Play()
+        LoadedAnim:AdjustSpeed(Random.new():NextNumber(1/16, 2))
+    end
+
     Character:PivotTo(Platform.Spawnpoint.CFrame)
 
     local FlashEffect = Lighting:FindFirstChild("OutOfTimeFlash")
@@ -326,6 +370,11 @@ function Proxy.UI()
         if hasHitTrigger then return end
         if otherpart:FindFirstAncestor(Character.Name) then
             hasHitTrigger = true
+
+            -- The Ambience drags to half speed as the second batch unfolds
+            Sounds.Ambience.PlaybackSpeed = 1
+            TweenService:Create(Sounds.Ambience, TweenInfo.new(BATCH_2_DURATION, Enum.EasingStyle.Linear), {PlaybackSpeed = 1/2}):Play()
+
             for _, msg in PROXY_A_MSGS[2] do
                 -- The souls line: summons the apparitions and roots the player in place
                 if msg == APPARITION_TRIGGER_MSG then
@@ -343,6 +392,10 @@ function Proxy.UI()
                 Sounds.Whispers.Volume = 0
                 task.wait(3)
             end
+
+            -- The final line settles: the apparitions vanish with the Proxy's exit sound
+            PlaySound(APPARITION_EXIT_SOUND, "End", Character.PrimaryPart, nil, 1, 1)
+            despawnApparitions()
         end
     end)
 end
