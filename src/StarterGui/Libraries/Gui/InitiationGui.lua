@@ -53,7 +53,7 @@ local ROLE_COLORS    = {
 }
 
 local OBJECTIVES     = {
-    Squadmates       = "NETURALIZE ALL SUBJECTS",
+    Squadmates       = "CONTAIN ALL SUBJECTS",
     Subjects         = "ELIMINATE ALL SQUADMATES",
 }
 
