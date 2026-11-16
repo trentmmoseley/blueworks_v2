@@ -32,7 +32,7 @@ local VOTE_DURATION   = 15
 local SUBENTITY_DECAY = 2
 
 local TIME_LIMITS     = {
-    Classic           = 15
+    Classic           = 60 * 15
 }
 
 local RESULT_MSGS     = {
