@@ -1720,7 +1720,7 @@ return function(rig : Model)
 
         -- Announcing death
         if rig:GetAttribute("Health") == 0 then
-            CommsService:GlobalSubtitle("PNDR-4075 neutralized successfully", Color3.fromRGB(0, 255, 0), true)
+            CommsService:GlobalSubtitle("PNDR-4075 contained successfully", Color3.fromRGB(0, 255, 0), true)
             _G.Knit.GetService("StraySoundService"):GlobalSound("GlobalAnn")
         end
 

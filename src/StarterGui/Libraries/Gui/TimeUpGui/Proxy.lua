@@ -20,12 +20,14 @@ local Sounds       = PlayerGui.Sounds.OutOfTime.Proxy
 
 local AttackVPF    = TheGui.AttackVPF
 local BloodEffects = TheGui.BloodEffects
+local FinalScene   = TheGui.FinalScene
 local ProxyADialog = TheGui.ProxyADialog
 local Camera       = game.Workspace.CurrentCamera
 
 local VFX          = RepStorage.VFX.TimeUp.Proxy
 
 local PlaySound    = require(RepStorage.Modules.Util.PlaySound)
+local SelfDestruct = require(RepStorage.Remotes.SelfDestruct):Client()
 
 -- Vars and consts
 local ATTACK_ANIMS = {97633645023236, 126985686457998, 123162586564812, 94060623091801}
@@ -66,11 +68,10 @@ local PROXY_A_MSGS = {
         "And you have just become one of them.",
         "I will teach you the essense of eternity --",
         "how it feels, and how it works.",
-        "But first, I must show you...",
-        "...how it looks.",
+        "But first, I must show you how it looks.",
     },
     {
-        "Look into my eyes.",
+        "Look at me.",
     }
 }
 
@@ -175,13 +176,17 @@ function Proxy.UI()
     Platform.Parent = game.Workspace
     
     -- Tendrils
+    local TendrilSizes = {}
     for _, tendril in Platform.TendrilHead.Tendrils:GetChildren() do
         local Anim = Instance.new("Animation")
         Anim.AnimationId = "rbxassetid://123725938975640"
         local AnimController : AnimationController = tendril.AnimationController
-        local LoadedAnim : AnimationTrack = AnimController:LoadAnimationAsync(Anim)
+        local LoadedAnim : AnimationTrack = AnimController:LoadAnimation(Anim)
         LoadedAnim:Play()
-        LoadedAnim:AdjustSpeed(Random.new():NextNumber(1/16, 2))
+        LoadedAnim:AdjustSpeed(Random.new():NextNumber(1/16, 1/2))
+        TendrilSizes[tendril] = tendril.Tendril1.Size
+        tendril.Tendril1.Size = Vector3.zero
+        tendril.Tendril1.Transparency = 1
     end
 
     Character:PivotTo(Platform.Spawnpoint.CFrame)
@@ -375,6 +380,12 @@ function Proxy.UI()
             Sounds.Ambience.PlaybackSpeed = 1
             TweenService:Create(Sounds.Ambience, TweenInfo.new(BATCH_2_DURATION, Enum.EasingStyle.Linear), {PlaybackSpeed = 1/2}):Play()
 
+            -- The MadnessStatic swells in from silence alongside it
+            Sounds.MadnessStatic.Volume = 0
+            Sounds.MadnessStatic.PlaybackSpeed = 0
+            Sounds.MadnessStatic:Play()
+            TweenService:Create(Sounds.MadnessStatic, TweenInfo.new(BATCH_2_DURATION, Enum.EasingStyle.Linear), {Volume = 0.125, PlaybackSpeed = 4/5}):Play()
+
             for _, msg in PROXY_A_MSGS[2] do
                 -- The souls line: summons the apparitions and roots the player in place
                 if msg == APPARITION_TRIGGER_MSG then
@@ -393,9 +404,99 @@ function Proxy.UI()
                 task.wait(3)
             end
 
-            -- The final line settles: the apparitions vanish with the Proxy's exit sound
+            -- The final line settles: the apparitions vanish with the Proxy's exit
+            -- sound and the Ambience dies out
             PlaySound(APPARITION_EXIT_SOUND, "End", Character.PrimaryPart, nil, 1, 1)
             despawnApparitions()
+            Sounds.Ambience:Stop()
+
+            -- Third part
+            for _, msg in PROXY_A_MSGS[3] do
+                local UsedMessage = msg:gsub("player_name", Player.Name)
+                for i = 1, #UsedMessage do
+                    if UsedMessage:sub(i, i) ~= " " then
+                        Sounds.Whispers.Volume = 1
+                        ProxyADialog.Text = UsedMessage:sub(1, i)
+                        Sounds.Whispers.TimePosition = Rand:NextNumber() * Sounds.Whispers.TimeLength
+                        task.wait(1/30)
+                        Sounds.Whispers.Volume = 0
+                        task.wait(1/2)
+                    end
+                end
+            end
+
+            -- Tendrils: regrown to the sizes they had when the Platform was summoned
+            for _, tendril in Platform.TendrilHead.Tendrils:GetChildren() do
+                tendril.Tendril1.Transparency = 0
+                TweenService:Create(tendril.Tendril1, TweenInfo.new(7, Enum.EasingStyle.Exponential), {Size = TendrilSizes[tendril] or tendril.Tendril1.Size}):Play()
+            end
+
+            TweenService:Create(Platform.DoorLeft.PrimaryPart, TweenInfo.new(7, Enum.EasingStyle.Exponential), {CFrame = Platform.DoorLeft.PrimaryPart.CFrame * CFrame.Angles(0, -math.rad(math.random(30, 90)), 0)}):Play()
+            TweenService:Create(Platform.DoorRight.PrimaryPart, TweenInfo.new(7, Enum.EasingStyle.Exponential), {CFrame = Platform.DoorRight.PrimaryPart.CFrame * CFrame.Angles(0, math.rad(math.random(30, 90)), 0)}):Play()
+
+            -- The camera is dragged toward the TendrilHead with a force that
+            -- grows from nothing, like the pull that drew it to the Proxy
+            local LookForce = 0
+            local LookConn = RunService.PreRender:Connect(function(dt)
+                LookForce += dt ^ 1.85
+                Camera.CFrame = Camera.CFrame:Lerp(CFrame.lookAt(Camera.CFrame.Position, Platform.TendrilHead.CFrame.Position), LookForce)
+            end)
+
+            -- Each door creaks twice as it swings open; both creaks start together
+            -- and layer over each other at random slow speeds
+            for _, door in {Platform.DoorLeft, Platform.DoorRight} do
+                for _ = 1, 2 do
+                    local Creak = Sounds.DoorCreakOpen:Clone()
+                    Creak.PlaybackSpeed = Rand:NextNumber(0.125, 0.175)
+                    Creak.Parent = door.PrimaryPart
+                    Creak:Play()
+
+                    Creak.Ended:Once(function()
+                        Creak:Destroy()
+                    end)
+                end
+            end
+
+            TweenService:Create(Sounds.MadnessStatic, TweenInfo.new(7, Enum.EasingStyle.Linear), {Volume = 2/3, PlaybackSpeed = 4/3}):Play()
+
+            -- Two seconds before the doors finish swinging open, the MadnessStatic
+            -- peaks and the DeathScream swells from silence
+            task.delay(7 - 2, function()
+                Sounds.DeathScream.Volume = 0
+                Sounds.DeathScream:Play()
+                TweenService:Create(FlashEffect, TweenInfo.new(2), {Contrast = 30, Saturation = 30, TintColor = Color3.fromRGB(132, 255, 0)}):Play()
+                TweenService:Create(TheGui._static, TweenInfo.new(2), {ImageTransparency = 0.8}):Play()
+                TweenService:Create(Sounds.DeathScream, TweenInfo.new(2, Enum.EasingStyle.Linear), {Volume = 2}):Play()
+
+                -- Immediately after, every sound the client can hear ceases:
+                -- complete silence (the creaks' crawl outlasts the door swing,
+                -- so they are cut here too; stopping them fires their Ended
+                -- cleanup)
+                task.wait(2)
+                for _, root in {PlayerGui, Platform} do
+                    for _, desc in root:GetDescendants() do
+                        if desc:IsA("Sound") then
+                            desc:Stop()
+                        end
+                    end
+                end
+            end)
+
+            task.wait(7)
+
+            ProxyADialog.Visible = false
+            FinalScene.Visible = true
+            LookConn:Disconnect()
+            task.wait(5)
+            TweenService:Create(FinalScene.TextLabel, TweenInfo.new(2), {TextTransparency = 1, TextStrokeTransparency = 1}):Play()
+            TheGui.BackgroundTransparency = 0
+            TweenService:Create(FinalScene, TweenInfo.new(3), {ImageTransparency = 1}):Play()
+            TweenService:Create(TheGui._static, TweenInfo.new(2), {ImageTransparency = 1}):Play()
+            for _, image in BloodEffects:GetChildren() do
+                TweenService:Create(image, TweenInfo.new(1/2), {ImageTransparency = 1}):Play()
+            end
+            task.wait(3)
+            SelfDestruct:Fire("PROXY_4")
         end
     end)
 end

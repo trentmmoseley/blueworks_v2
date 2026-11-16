@@ -64,6 +64,10 @@ local DeathSequences = {
         task.wait(2)
     end,
 
+    PROXY_4 = function(...)
+
+    end,
+
     DEFAULT          = function(...)
         Sounds.Death:Play()
         Sounds.Sting:Play()

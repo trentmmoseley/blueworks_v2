@@ -109,7 +109,7 @@ function HealthService:KnitInit() : ()
         local Character = player.Character
         if not Character then return end
         local Class = self.CharService:GetCharacterClass(Character)
-        if not Class then return end
+        if not Class or player:GetAttribute("Lost") ~= true then return end
 
         Character:SetAttribute("CauseOfDeath", cod)
         Class.HealthClass:InstaKill()

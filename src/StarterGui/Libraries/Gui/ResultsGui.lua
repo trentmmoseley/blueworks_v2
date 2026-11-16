@@ -183,7 +183,7 @@ function ResultsGui.Function()
                     Template.PlayerName.TextColor3 = Template.PlayerName.TextColor3:Lerp(Color3.fromRGB(61, 46, 46), 1/2)
                     Template.Place.TextColor3 = Template.PlayerName.TextColor3
                     Template.Score.TextColor3 = Template.PlayerName.TextColor3
-                    Template.PlayerName.Text = Template.PlayerName.Text..string.format(" <font color = 'rgb(255, 255, 255)'><font size = '8'>%s</font></font>", profile.Team == "Squadmates" and "DEAD" or "NEUTRALIZED")
+                    Template.PlayerName.Text = Template.PlayerName.Text..string.format(" <font color = 'rgb(255, 255, 255)'><font size = '8'>%s</font></font>", profile.Team == "Squadmates" and "DEAD" or "CONTAINED")
                     Template.UIStroke.Transparency = 1
                 end
 

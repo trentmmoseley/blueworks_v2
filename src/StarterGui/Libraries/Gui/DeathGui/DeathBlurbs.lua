@@ -9,6 +9,7 @@ local BLURBS      = {
     PROXY_1       = "Multiple deep lacerations found across Unit #user_id's dead body. Bodycam footage confirms death by PNDR-4075.",
     PROXY_2       = "Unit #user_id found dead with a large pool of blood around and under pronoun_possessive throat area. Surveillance tapes confirm death by PNDR-4075.",
     PROXY_3       = "Bits and pieces of Unit #user_id found as far as one (1) km. away from the site of pronoun_possessive last mission. Presumably killed in a particularly violent encounter with PNDR-4075.",
+    PROXY_4       = "No trace of Unit #user_id on the site of pronoun_possessive last mission of recontaining PNDR-4075. Presumably abducted by the entity, nature of fate ambiguous.",
 }
 
 -- Fetches blurb

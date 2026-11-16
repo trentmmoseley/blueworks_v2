@@ -39,7 +39,7 @@ local RESULT_MSGS     = {
     Squadmates        = {
         Color = Color3.fromRGB(0, 255, 0),
         Messages = {
-            "All P.N.D.R. Subjects neutralized",
+            "All P.N.D.R. Subjects contained",
             "The area has been declared safe",
             {
                 "Good job.",
