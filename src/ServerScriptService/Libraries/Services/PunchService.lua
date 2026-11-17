@@ -34,6 +34,7 @@ function PunchService:KnitInit() : ()
         if player.Team ~= game.Teams.Squadmates then return end
         local Character = player.Character or player.CharacterAdded:Wait()
         if not Character or Character:GetAttribute("isGrabbed") == true then return end
+        if Character:GetAttribute("beingBrainwashed") == true then return end
         if player:GetAttribute("InitiationActive") == true then return end
         if player:GetAttribute("Lost") == true then return end
         if (Character:GetAttribute("NodeID") or 0) > 0 then return end

@@ -19,7 +19,7 @@ local ProxyFinalScene = PlayerGui:WaitForChild("TimeUpGui"):WaitForChild("Proxy"
 -- Main function
 function AspectRatio.Function()
     RunService.PreRender:Connect(function(dt)
-        TheGui.Enabled = not (Character and Character.Parent) or ProxyFinalScene.Visible
+        TheGui.Enabled = not (Character and Character.Parent) or ProxyFinalScene.Visible or Character:GetAttribute("beingBrainwashed") == true
     end)
 end
 

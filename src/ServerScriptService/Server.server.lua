@@ -5,6 +5,7 @@ local S3         = game:GetService("ServerScriptService")
 _G.Signal 		 = require(RepStorage.Packages._Index["sleitnick_signal@2.0.3"].signal)
 local Red        = require(game.ReplicatedStorage.Packages.Red) -- line must exist for red to work
 local VMAnim 	 = require(RepStorage.Remotes.VMAnim):Server()  -- line must exist for viewmodel to work
+local DamageSway = require(RepStorage.Remotes.DamageCamSway):Server()
 
 -- Modules and objects
 _G.Knit          = require(RepStorage.Packages.Knit)
@@ -34,11 +35,9 @@ game.Workspace.DescendantAdded:Connect(function(prompt)
 end)
 
 -- [[ Server logic ]] --
---[[for i = 1, 8 do
-	local Tethered = _G.Knit.GetService("NPCService"):CreateNPC("Human", CFrame.new(0, 10, i * 10))
-end]]--
 _G.Knit.GetService("MapService"):Interactables()
-local Proxy = _G.Knit.GetService("NPCService"):CreateNPC("Proxy", CFrame.new(20, 10, 0))
+-- local Proxy = _G.Knit.GetService("NPCService"):CreateNPC("Proxy", CFrame.new(20, 10, 0))
+local Tethered = _G.Knit.GetService("NPCService"):CreateNPC("Tethered", CFrame.new(-20, 10, 0))
 
 repeat task.wait(4) until #game.Teams.Squadmates:GetPlayers() > 0
 

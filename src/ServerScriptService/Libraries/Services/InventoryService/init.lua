@@ -407,6 +407,7 @@ function InvService:KnitInit() : ()
             if player ~= Player or player.Team ~= game.Teams.Squadmates then return end
             if player:GetAttribute("Lost") == true then return end
             if char:GetAttribute("isGrabbed") == true then return end
+            if char:GetAttribute("beingBrainwashed") == true then return end
             if (char:GetAttribute("NodeID") or 0) ~= 0 then return end
 
             local Info = {...}

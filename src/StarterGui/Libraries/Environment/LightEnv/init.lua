@@ -39,6 +39,8 @@ local NVLight    = nil
 local ATM        = Lighting.Atmosphere
 local Clouds	 = game.Workspace.Terrain.Clouds
 
+local DefaultBrightness = Lighting.Brightness
+
 -- Vars and consts
 local OUTDOOR_AMBIENT = Color3.fromRGB(59, 59, 84)
 local INDOOR_AMBIENT  = Color3.fromRGB(30, 30, 45)
@@ -142,6 +144,15 @@ local function updateAmbience()
         EnvSounds.Rain.Volume = 0
         EnvSounds.Wind.Volume = 0
     end
+
+    -- Brainwashed players are cut off from the outside world: no ambience, no haze
+    if Character:GetAttribute("beingBrainwashed") == true then
+        ATM.Density = 0
+        EnvSounds.AmbienceOutdoor.Volume = 0
+        EnvSounds.AmbienceIndoor.Volume = 0
+        EnvSounds.Rain.Volume = 0
+        EnvSounds.Wind.Volume = 0
+    end
 end
 
 -- Gets desired ambient lighting
@@ -155,6 +166,14 @@ end
 
 -- Updates lighting
 local function updateLighting()
+    -- Brainwashed players see a fully lit world: no shadows, no darkness
+    if Character:GetAttribute("beingBrainwashed") == true then
+        Lighting.Ambient = Color3.new(1, 1, 1)
+        Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+        Lighting.Brightness = 2
+        return
+    end
+
     local ProgToDark = Progress(TimeLeft.Value, TimeLeft:GetAttribute("Init"), 0)
     Lighting.ClockTime = Lerp(LEInfo.TimeOfDay[GameValues.Strings.TimeOfDay.Value].ClockTime[1], LEInfo.TimeOfDay[GameValues.Strings.TimeOfDay.Value].ClockTime[2], ProgToDark)
     
@@ -183,6 +202,7 @@ local function updateLighting()
 
         task.delay(Rand:NextNumber() * 10, function()
             if Player:GetAttribute("Lost") == true then return end
+            if Character:GetAttribute("beingBrainwashed") == true then return end
 
             local ChosenSound = THUNDER_SOUNDS[math.random(1, #THUNDER_SOUNDS)]
             local NewSound = Instance.new("Sound")
@@ -208,6 +228,12 @@ local function updateLighting()
 
         task.defer(function()
             for _ = 1, 7 do
+                -- Brainwashing mid-storm kills any in-flight lightning flashes
+                if Character:GetAttribute("beingBrainwashed") == true then
+                    doLightning = false
+                    break
+                end
+
                 doLightning = true
                 local FlashLength = Rand:NextNumber() * 3/8
                 Lighting.OutdoorAmbient = Color3.fromRGB(191, 170, 255)
@@ -256,6 +282,26 @@ function LightEnv.Function()
             if sound:IsA("Sound") and sound.Name == "Thunder" then
                 sound:Stop()
             end
+        end
+    end)
+
+    -- Brainwashing kills the ambience, the haze, and all darkness instantly
+    -- (the ambience loop and updateLighting restore everything on their own
+    -- once the player is unbrainwashed)
+    Character:GetAttributeChangedSignal("beingBrainwashed"):Connect(function()
+        if Character:GetAttribute("beingBrainwashed") == true then
+            ATM.Density = 0
+            EnvSounds.AmbienceOutdoor.Volume = 0
+            EnvSounds.AmbienceIndoor.Volume = 0
+            EnvSounds.Rain.Volume = 0
+            EnvSounds.Wind.Volume = 0
+
+            Lighting.Ambient = Color3.new(1, 1, 1)
+            Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+            Lighting.Brightness = 2
+        else
+            Lighting.Brightness = DefaultBrightness
+            updateLighting()
         end
     end)
 end

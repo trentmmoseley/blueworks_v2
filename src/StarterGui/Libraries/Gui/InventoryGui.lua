@@ -196,7 +196,7 @@ function InventoryGui.Function()
         DROP_KB = Enum.KeyCode[DataController:Get("Keybinds.Drop.Keyboard")]
 
         UIS.InputBegan:Connect(function(input, gpe)
-            if not gpe and not Player:GetAttribute("isChatting") and Character:GetAttribute("isGrabbed") ~= true and Player:GetAttribute("InitiationActive") ~= true then
+            if not gpe and not Player:GetAttribute("isChatting") and Character:GetAttribute("isGrabbed") ~= true and Character:GetAttribute("beingBrainwashed") ~= true and Player:GetAttribute("InitiationActive") ~= true then
                 if input.KeyCode == DROP_KB then
 				    InvService.ActionRequest:Fire("DROP")
                 else
@@ -224,11 +224,12 @@ function InventoryGui.Function()
         end)
 
         local function updateEnabled()
-            TheGui.Enabled = Character:GetAttribute("isDowned") ~= true and Character:GetAttribute("isGrabbed") ~= true and (Character:GetAttribute("NodeID") or 0) == 0 and Player:GetAttribute("InitiationActive") ~= true
+            TheGui.Enabled = Character:GetAttribute("isDowned") ~= true and Character:GetAttribute("isGrabbed") ~= true and Character:GetAttribute("beingBrainwashed") ~= true and (Character:GetAttribute("NodeID") or 0) == 0 and Player:GetAttribute("InitiationActive") ~= true
         end
 
         Character:GetAttributeChangedSignal("isDowned"):Connect(updateEnabled)
         Character:GetAttributeChangedSignal("isGrabbed"):Connect(updateEnabled)
+        Character:GetAttributeChangedSignal("beingBrainwashed"):Connect(updateEnabled)
         Character:GetAttributeChangedSignal("NodeID"):Connect(updateEnabled)
         Player:GetAttributeChangedSignal("InitiationActive"):Connect(updateEnabled)
         updateEnabled()

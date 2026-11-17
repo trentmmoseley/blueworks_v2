@@ -13,6 +13,7 @@ local Humanoid       = Character:FindFirstChildOfClass("Humanoid")
 -- Modules and objects
 local Camera   		 = game.Workspace.CurrentCamera
 
+local DamageSway 	 = require(RepStorage.Remotes.DamageCamSway):Client()
 local FallDamage 	 = require(RepStorage.Remotes.FallDamage):Client()
 local Lerp 		 	 = require(RepStorage.Modules.Util.Math.Lerp)
 local LerpByFrame 	 = require(RepStorage.Modules.Util.Math.LerpByFrame)
@@ -189,6 +190,10 @@ function Bobble.Function(dt)
 
 		FallDamage:On(function(velocity)
 			FDSpring:shove(Vector3.new(-2, 0, 30) * Progress(velocity, 0, 30))
+		end)
+
+		DamageSway:On(function(strength : number)
+			PDSpring:shove(Vector3.new(-1, 1, 0) * strength)
 		end)
 	end
 end

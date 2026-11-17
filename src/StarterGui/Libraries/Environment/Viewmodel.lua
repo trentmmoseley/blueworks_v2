@@ -317,6 +317,7 @@ end
 local function punch()
     if Player:GetAttribute("Lost") == true then return end
     if Character:GetAttribute("isDowned") == true then return end
+    if Character:GetAttribute("beingBrainwashed") == true then return end
     if (Character:GetAttribute("NodeID") or 0) > 0 then return end
     local ChosenAnim = PunchTracks[math.random(1, #PunchTracks)]
     ChosenAnim:Play()
