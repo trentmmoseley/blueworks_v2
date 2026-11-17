@@ -1,5 +1,6 @@
 -- Services
 local Players       = game:GetService("Players")
+local RepStorage    = game:GetService("ReplicatedStorage")
 local RunService    = game:GetService("RunService")
 local PlayerGui     = Players.LocalPlayer.PlayerGui
 
@@ -11,6 +12,9 @@ local Player        = Players.LocalPlayer
 -- Modules and objects
 local Camera        = game.Workspace.CurrentCamera
 local Sounds        = PlayerGui.Sounds.Horror
+
+local TetheredVFX    = require(PlayerGui.Libraries.Environment.VFX.Tethered)
+local TetheredDialog = require(RepStorage.Modules.Data.Dialog.Tethered)
 
 -- Vars and consts
 local SOUND_ORDER   = {"Far", "Medium", "Near"}
@@ -99,7 +103,12 @@ local function updatePendingHorrors()
         elseif isEntityVisible(entity) or BypassHorrors[entity] == true then
             PendingHorrors[entity] = nil
             BypassHorrors[entity] = nil
-            playHorror(getIntensity(entity))
+
+            if playHorror(getIntensity(entity)) and entity.Name == "Tethered" then
+                -- The Tethered's ambush flashes an ATTACK_INIT message when spotted
+                local Messages = TetheredDialog.ATTACK_INIT
+                TetheredVFX.Flash1.Function({Messages[math.random(1, #Messages)], entity.PrimaryPart.Position})
+            end
         end
     end
 

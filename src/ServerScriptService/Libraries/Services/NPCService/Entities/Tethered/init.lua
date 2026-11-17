@@ -110,6 +110,28 @@ local function findSpawnCFrame(TargetPart : BasePart) : CFrame
     return CFrame.new(Origin) * CFrame.Angles(0, math.rad(Rand:NextNumber() * 360), 0)
 end
 
+-- Returns the CFrame of the Subject spawnpoint closest to a position
+local function getClosestSubjectSpawn(pos : Vector3) : CFrame?
+    local Playspace = game.Workspace:FindFirstChild("Playspace")
+    local Spawns = Playspace and Playspace:FindFirstChild("Spawns")
+    local CharSpawns = Spawns and Spawns:FindFirstChild("Characters")
+    local SubjectSpawns = CharSpawns and CharSpawns:FindFirstChild("Subjects")
+
+    if not SubjectSpawns then return nil end
+
+    local ClosestSpawn, ClosestDist = nil, math.huge
+
+    for _, spawn in SubjectSpawns:GetChildren() do
+        local Dist = (spawn:GetPivot().Position - pos).Magnitude
+        if Dist < ClosestDist then
+            ClosestSpawn = spawn
+            ClosestDist = Dist
+        end
+    end
+
+    return ClosestSpawn and ClosestSpawn:GetPivot()
+end
+
 -- Main function
 return function(rig : Model)
     local Humanoid = rig:WaitForChild("Humanoid")
@@ -234,7 +256,7 @@ return function(rig : Model)
         end)
 
         -- Scans for targets
-        DetectionRadius += dt * (6 + AggroLevel * 3)
+        DetectionRadius += dt * (4 + AggroLevel * 3)
         PhaseSpeed = math.min(PhaseSpeed + dt * (1/4) * (AggroLevel * 4), 100)
 
         local Chars = Characters:GetChildren()
@@ -288,37 +310,48 @@ return function(rig : Model)
             floatTowardTarget(dt)
             hasReachedTarget(function()
                 rig.Parent = Characters
-
-                -- Finds spot around character to teleport (with a floor beneath it)
-                local SpawnCFrame = findSpawnCFrame(TargetPart)
-
-                for i = 1, 10 do
-                    rig:PivotTo(SpawnCFrame)
-                end
-
-                VFXService:GlobalVFX("Tethered", "Phase", rig.PrimaryPart.CFrame, rig, rig.PrimaryPart.CFrame)
-
                 NextPhaseOut = os.clock() + PHASE_OUT_T
-                local Message = broadcastMessage("ATTACK_INIT")
-                
+
                 if surprisePlayer then
+                    -- Quiet ambush: phases in at the Subject spawnpoint closest to
+                    -- the target and pursues from there, with no phase VFX and no
+                    -- jumpscare; the target gets a Horror sting the moment they
+                    -- visually spot him (handled client-side, same as the Proxy's lock-on)
+                    local SpawnCFrame = getClosestSubjectSpawn(TargetPart.Position) or findSpawnCFrame(TargetPart)
+
+                    for i = 1, 10 do
+                        rig:PivotTo(SpawnCFrame)
+                    end
+
                     DetectService:DetectPlayer(rig, CurrentPatrolTarget, 3)
+
                     local Player = Players:GetPlayerFromCharacter(CurrentPatrolTarget)
                     if Player then
-                        VFXService:PlayVFX(Player, "Tethered", "Surprise", rig.PrimaryPart.CFrame.Position or CurrentPhasePos or Vector3.zero, rig, Message)
+                        VFXService:PlayVFX(Player, "Horror", "Horror", rig.PrimaryPart.CFrame, rig, 3)
                     end
+
+                    LoadedAnims.Run:Play()
+                else
+                    -- Finds spot around character to teleport (with a floor beneath it)
+                    local SpawnCFrame = findSpawnCFrame(TargetPart)
+
+                    for i = 1, 10 do
+                        rig:PivotTo(SpawnCFrame)
+                    end
+
+                    VFXService:GlobalVFX("Tethered", "Phase", rig.PrimaryPart.CFrame, rig, rig.PrimaryPart.CFrame)
+
+                    LoadedAnims.Run:Play()
+                    LoadedAnims.Spawn:Play()
                 end
 
                 TetheredStats:SetAttribute("isPhasedIn", true)
                 DamageSustained = 0
                 CurrentState = "ATTACK"
-                
+
                 if NextAbility == 0 then
                     abilityInterval()
                 end
-
-                LoadedAnims.Run:Play()
-                LoadedAnims.Spawn:Play()
             end)
         else
             CurrentPatrolTarget = nil
