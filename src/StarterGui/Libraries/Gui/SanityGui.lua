@@ -26,32 +26,21 @@ local TetheredDoc = require(RepStorage.Modules.Data.Documents.Tethered)
 local SanityCC : ColorCorrectionEffect = Lighting:FindFirstChild("SanityCC")
 
 local Lerp        = require(RepStorage.Modules.Util.Math.Lerp)
-local LerpByFrame = require(RepStorage.Modules.Util.Math.LerpByFrame)
 local Progress    = require(RepStorage.Modules.Util.Math.Progress)
 local VFX		= require(PlayerGui.Libraries.Environment.VFX.Tethered)
 
 --// Constants
 local Rand = Random.new()
 
-local STATIC_POW = {1, 3, 9}
-
 local ENTITY_NAME = "Tethered"
-local ENTITY_RANGE = 50
-local MAX_DISTANCE = 99999
-
--- Proximity calculations do not need to happen every rendered frame.
--- Adjust this depending on how responsive you want the effect to feel.
-local PROXIMITY_UPDATE_RATE = 1 / 20
 
 --// State
 local Character
-local RootPart
 
 local Sanity = 100
 local MaxSanity = 100
 
 local SanityProgress = 0
-local ProximityDistortion = 0
 local MIN_MS_VOL		   = 0
 
 local EntityCount = 0
@@ -119,51 +108,6 @@ local function removeEntity(instance: Instance)
 	updateEntityState()
 end
 
-local function getClosestEntityDistance(): number
-	if not RootPart then
-		return MAX_DISTANCE
-	end
-
-	local playerPosition = RootPart.Position
-	local closestDistance = MAX_DISTANCE
-
-	for entity in Entities do
-		if entity.Parent then
-			local primaryPart = entity.PrimaryPart
-
-			if primaryPart then
-				local distance = (primaryPart.Position - playerPosition).Magnitude
-
-				if distance < closestDistance then
-					closestDistance = distance
-
-					-- Can't get closer than zero.
-					if closestDistance <= 0 then
-						break
-					end
-				end
-			end
-		end
-	end
-
-	return math.min(closestDistance, MAX_DISTANCE)
-end
-
-local function updateProximity()
-	if not EntityPresent then
-		ProximityDistortion = 0
-		return
-	end
-
-	local closestDistance = getClosestEntityDistance()
-
-	ProximityDistortion = math.clamp(
-		Progress(closestDistance, ENTITY_RANGE, 0),
-		0,
-		1
-	) ^ 2
-end
-
 local function updateSanity()
 	Sanity = Character:GetAttribute("Sanity") or 100
 	MaxSanity = Character:GetAttribute("MaxSanity") or 100
@@ -176,36 +120,6 @@ local function updateSanity()
 	) ^ 3
 end
 
-local function updateStaticSounds()
-	local playersTeam = game.Teams.Squadmates
-
-	if Player.Team == playersTeam and ProximityDistortion > 0 then
-		local proximityVolume = Progress(
-			1 - ProximityDistortion,
-			1,
-			0.5
-		)
-
-		for _, sound in Sounds.Proximity:GetChildren() do
-			if sound.Name:find("Static") then
-				local index = tonumber(sound.Name:sub(-1))
-
-				if index then
-					sound.Volume = proximityVolume ^ (STATIC_POW[index] or 1)
-				end
-			end
-		end
-	end
-
-	if Player.Team ~= playersTeam or ProximityDistortion <= 0 then
-		for _, sound in Sounds.Proximity:GetChildren() do
-			if sound.Name:find("Static") then
-				sound.Volume = 0
-			end
-		end
-	end
-end
-
 local function updateMadnessStatic()
 	Sounds.MadnessStatic.Volume = math.max(MIN_MS_VOL, 0, SanityProgress)
 	Sounds.MadnessStatic.PlaybackSpeed = Lerp(
@@ -213,21 +127,15 @@ local function updateMadnessStatic()
 		2,
 		SanityProgress ^ 3
 	)
-	Static.ImageTransparency = math.min(1, Lerp(1, 2/3, SanityProgress), EntityPresent and Lerp(1, 1/2, ProximityDistortion) or 1)
+	Static.ImageTransparency = math.min(1, Lerp(1, 2/3, SanityProgress))
 end
 
 local function updateSoundState()
 	updateMadnessStatic()
-	updateStaticSounds()
 end
 
 local function updateCharacter(newCharacter: Model)
 	Character = newCharacter
-	RootPart = Character:FindFirstChild("HumanoidRootPart")
-
-	if not RootPart then
-		RootPart = Character:WaitForChild("HumanoidRootPart")
-	end
 
 	updateSanity()
 	updateSoundState()
@@ -299,35 +207,6 @@ function SanityGui.Function()
 		updateSanity()
 		updateSoundState()
 		updateCC()
-	end))
-
-	-- Proximity is updated independently of rendering.
-	local proximityAccumulator = 0
-
-	table.insert(Connections, RunService.Heartbeat:Connect(function(dt)
-		updateSoundState()
-
-		-- If neither condition can produce distortion, do nothing.
-		if not EntityPresent and SanityProgress <= 0 then
-			ProximityDistortion = 0
-			return
-		end
-
-		updateCC()
-
-		proximityAccumulator += dt
-
-		if proximityAccumulator < PROXIMITY_UPDATE_RATE then
-			return
-		end
-
-		proximityAccumulator = 0
-
-		if EntityPresent then
-			updateProximity()
-		else
-			ProximityDistortion = 0
-		end
 	end))
 
 	-- Camera manipulation is the only thing that needs PreRender.
@@ -465,16 +344,11 @@ function SanityGui.Function()
 		end
 
 		-- Camera distortion
-		local distortion = ProximityDistortion
-		Camera.FieldOfView += Rand:NextNumber(0, (distortion) ^ 3 * 35 * LerpByFrame(0.5, dt)) * (math.random() == 0 and 1 or -1) / 2
-
 		local xManip = 1 - math.max(
-			Rand:NextNumber(0, 0.1 * distortion),
 			Rand:NextNumber(0, 0.1 * SanityProgress)
 		)
 
 		local yManip = 1 - math.max(
-			Rand:NextNumber(0, 0.1 * distortion),
 			Rand:NextNumber(0, 0.1 * SanityProgress)
 		)
 
